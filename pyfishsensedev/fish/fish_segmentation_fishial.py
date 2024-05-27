@@ -115,7 +115,7 @@ class FishSegmentationFishial(FishSegmentation, ABC):
             """
             masks = masks.squeeze()
 
-            resized_mask: np.ndarray = cv2.resize(masks, (img_h, img_w))
+            resized_mask: np.ndarray = cv2.resize(masks, (img_w, img_h))
             return resized_mask
 
             # masks = torch.tensor(masks)
