@@ -1,0 +1,1 @@
+d1adbfc4-ffe1-41d9-a119-d5607ed4e3d2 dsm_version=7 encryption=none externaltype=synology hostname=e4e-nas.ucsd.edu ignore_ssl=True name=synology path=/fishsense/git-annex/pyFishSenseDev port=6021 protocol=https type=external timestamp=1716776768s
