@@ -8,6 +8,9 @@ This repository contains a Python implementation of the Fishsense lite pipeline.
 4. Run `git annex enableremote synology`.
 5. Download data `git annex copy --from=synology`.
 
+## Development Dependencies
+We provide a `docker` container which has the dependencies pre-installed.  In order to use this, please ensure you have `docker` installed on your system.  When running Visual Studio Code, ensure that you use the option to reopen in the container.  This step will time for the intial setup.
+
 ## Execute Unit Tests
 ```
 poetry run pytest

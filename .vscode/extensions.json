@@ -8,6 +8,7 @@
         "eamodio.gitlens",
         "VisualStudioExptTeam.vscodeintellicode",
         "ms-python.black-formatter",
-        "github.vscode-github-actions"
+        "github.vscode-github-actions",
+        "ms-vscode-remote.remote-containers"
     ]
 }

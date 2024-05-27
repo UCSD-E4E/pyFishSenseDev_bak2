@@ -1,0 +1,22 @@
+{
+	"image": "ghcr.io/ucsd-e4e/fishsense-docker-dev:main",
+	"features": {
+		"ghcr.io/devcontainers/features/docker-in-docker:2": {}
+	},
+	"postCreateCommand": "poetry install --with dev",
+	"customizations": {
+		"vscode": {
+			"extensions": [
+				"ms-python.vscode-pylance",
+				"ms-python.python",
+				"ms-toolsai.jupyter",
+				"njpwerner.autodocstring",
+				"ms-python.isort",
+				"eamodio.gitlens",
+				"VisualStudioExptTeam.vscodeintellicode",
+				"ms-python.black-formatter",
+				"github.vscode-github-actions"
+			]
+		}
+	}
+}
