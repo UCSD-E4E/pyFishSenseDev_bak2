@@ -44,7 +44,7 @@ class FishSegmentationFishial(FishSegmentation, ABC):
         return path.absolute()
 
     def _resize_img(
-        self, img: np.ndarray, interp_method=Image.BILINEAR
+        self, img: np.ndarray, interp_method=Image.LANCZOS
     ) -> Tuple[np.ndarray, np.ndarray]:
         height, width, _ = img.shape
         size = self.MIN_SIZE_TEST * 1.0
@@ -65,10 +65,12 @@ class FishSegmentationFishial(FishSegmentation, ABC):
         new_height = int(new_height)
         new_width = int(new_width)
 
-        pil_image = Image.fromarray(img)
-        pil_image = pil_image.resize((new_width, new_height), interp_method)
+        # pil_image = Image.fromarray(img)
+        # pil_image = pil_image.resize((new_width, new_height), interp_method)
 
-        resized_img = np.asarray(pil_image)
+        # resized_img = np.asarray(pil_image)
+
+        resized_img = cv2.resize(img, (new_width, new_height))
 
         # get scales of x&y after scaling
         scales = np.divide(img.shape[:2], resized_img.shape[:2])
@@ -93,9 +95,9 @@ class FishSegmentationFishial(FishSegmentation, ABC):
                 for point in poly
             ]
 
-        def do_paste_mask(masks, img_h: int, img_w: int) -> np.ndarray:
-            import torch
-            from torch.nn import functional as F
+        def do_paste_mask(masks: np.ndarray, img_h: int, img_w: int) -> np.ndarray:
+            # import torch
+            # from torch.nn import functional as F
 
             """
             Args:
@@ -111,32 +113,37 @@ class FishSegmentationFishial(FishSegmentation, ABC):
                 if skip_empty == True, a mask of shape (N, h', w'), and the slice
                     object for the corresponding region.
             """
-            masks = torch.tensor(masks)
-            x0_int, y0_int = 0, 0
-            x1_int, y1_int = img_w, img_h
-            x0, y0, x1, y1 = (
-                np.array([[0]]),
-                np.array([[0]]),
-                np.array([[img_w]]),
-                np.array([[img_h]]),
-            )
+            masks = masks.squeeze()
 
-            N = masks.shape[0]
-
-            img_y = torch.arange(y0_int, y1_int, dtype=torch.float32) + 0.5
-            img_x = torch.arange(x0_int, x1_int, dtype=torch.float32) + 0.5
-            img_y = (img_y - y0) / (y1 - y0) * 2 - 1
-            img_x = (img_x - x0) / (x1 - x0) * 2 - 1
-            # img_x, img_y have shapes (N, w), (N, h)
-            gx = img_x[:, None, :].expand(N, img_y.size(1), img_x.size(1))
-            gy = img_y[:, :, None].expand(N, img_y.size(1), img_x.size(1))
-            grid = torch.stack([gx, gy], dim=3)
-
-            resized_mask = F.grid_sample(
-                masks, grid.to(masks.dtype), align_corners=False
-            )
-
+            resized_mask: np.ndarray = cv2.resize(masks, (img_h, img_w))
             return resized_mask
+
+            # masks = torch.tensor(masks)
+            # x0_int, y0_int = 0, 0
+            # x1_int, y1_int = img_w, img_h
+            # x0, y0, x1, y1 = (
+            #     np.array([[0]]),
+            #     np.array([[0]]),
+            #     np.array([[img_w]]),
+            #     np.array([[img_h]]),
+            # )
+
+            # N = masks.shape[0]
+
+            # img_y = torch.arange(y0_int, y1_int, dtype=torch.float32) + 0.5
+            # img_x = torch.arange(x0_int, x1_int, dtype=torch.float32) + 0.5
+            # img_y = (img_y - y0) / (y1 - y0) * 2 - 1
+            # img_x = (img_x - x0) / (x1 - x0) * 2 - 1
+            # # img_x, img_y have shapes (N, w), (N, h)
+            # gx = img_x[:, None, :].expand(N, img_y.size(1), img_x.size(1))
+            # gy = img_y[:, :, None].expand(N, img_y.size(1), img_x.size(1))
+            # grid = torch.stack([gx, gy], dim=3)
+
+            # resized_mask = F.grid_sample(
+            #     masks, grid.to(masks.dtype), align_corners=False
+            # )
+
+            # return resized_mask
 
         def bitmap_to_polygon(bitmap):
             """Convert masks from the form of bitmaps to polygons.
