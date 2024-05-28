@@ -38,5 +38,4 @@ class FishSegmentationFishialOnnx(FishSegmentationFishial):
         ort_outs = self.ort_session.run(None, ort_inputs)
 
         complete_mask = self._convert_output_to_mask_and_polygons(ort_outs, scales, img)
-
-        return complete_mask[:, :, 0]
+        return complete_mask

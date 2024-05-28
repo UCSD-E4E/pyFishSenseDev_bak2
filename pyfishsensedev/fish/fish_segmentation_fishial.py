@@ -187,7 +187,7 @@ class FishSegmentationFishial(FishSegmentation, ABC):
             )
             mask_h, mask_w = y2 - y1, x2 - x1
 
-            np_mask = do_paste_mask(masks[ind, None, :, :], mask_h, mask_w).squeeze()
+            np_mask = do_paste_mask(masks[ind, None, :, :], mask_h, mask_w)
 
             # Threshold the mask converting to uint8 casuse opencv diesn't allow other type!
             np_mask = np.where(np_mask > self.MASK_THRESHOLD, 255, 0).astype(np.uint8)
@@ -205,4 +205,5 @@ class FishSegmentationFishial(FishSegmentation, ABC):
             complete_mask = cv2.fillPoly(
                 complete_mask, [np.array(polygon_full)], (ind + 1, ind + 1, ind + 1)
             )
-        return complete_mask
+
+        return complete_mask[:, :, 0]

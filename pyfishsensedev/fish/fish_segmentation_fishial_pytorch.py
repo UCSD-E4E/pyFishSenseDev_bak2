@@ -42,4 +42,4 @@ class FishSegmentationFishialPyTorch(FishSegmentationFishial):
             segm_output, scales, img
         )
 
-        return complete_mask[:, :, 0]
+        return complete_mask
