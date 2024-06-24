@@ -16,7 +16,7 @@ from pyfishsensedev.fish.fish_segmentation import FishSegmentation
         FishSegmentationFishialOnnx(),
     ],
 )
-def test_fishial(fish_segmentation: FishSegmentation):
+def test_inference(fish_segmentation: FishSegmentation):
     data = np.load("./tests/data/fish_segmentation.npz")
     img8 = data["img8"]
     truth = data["segmentations"]

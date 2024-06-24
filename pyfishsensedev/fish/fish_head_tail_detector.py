@@ -6,14 +6,18 @@ import numpy as np
 
 
 class FishHeadTailDetector:
-    def find_head_tail(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
-
+    def _pca_find_left_right(
+        self, mask: np.ndarray
+    ) -> Tuple[np.ndarray, np.ndarray, float]:
+        # Find all the nonzero points.  These are the mask.
         y, x = mask.nonzero()
         x_min, x_max, y_min, y_max = [x.min(), x.max(), y.min(), y.max()]
 
+        # Crop the mask using the nonzero
         mask_crop = mask[y_min:y_max, x_min:x_max]
         y, x = mask_crop.nonzero()
 
+        # Necessary for using PCA
         x_mean = np.mean(x)
         y_mean = np.mean(y)
 
@@ -21,49 +25,29 @@ class FishHeadTailDetector:
         y = y - y_mean
         x_min, x_max, y_min, y_max = [x.min(), x.max(), y.min(), y.max()]
 
+        # PCA
         coords = np.vstack([x, y])
         cov = np.cov(coords)
         evals, evecs = np.linalg.eig(cov)
 
+        # Choose the largest eigenvalue
         sort_indices = np.argsort(evals)[::-1]
         x_v1, y_v1 = evecs[:, sort_indices[0]]  # Eigenvector with largest eigenvalue
 
         height, width = mask_crop.shape
 
+        # Scale the line until we reach the end.
         scale = height if height > width else width
 
         coord1 = np.array([-x_v1 * scale * 2, -y_v1 * scale * 2])
-
         coord2 = np.array([x_v1 * scale * 2, y_v1 * scale * 2])
 
-        extent = [x.min(), x.max(), y.min(), y.max()]
-
-        # min_x = coord1[0] if coord1[0] < coord2[0] else coord2[0]
-        # min_y = coord1[1] if coord1[1] < coord2[1] else coord2[1]
-
-        # coord1[0] += np.mean(x)
-        # coord2[0] += np.mean(x)
-
-        # coord1[1] += np.mean(y)
-        # coord1[1] += np.mean(y)
-
-        # coord1[0] -= min_x
-        # coord2[0] -= min_x
-
-        # coord1[1] -= min_y
-        # coord2[1] -= min_y
-
+        # Calculate the line
         coord1[0] -= x_min
         coord2[0] += x_min
 
         coord1[1] -= y_min
         coord2[1] += y_min
-
-        # coord1[0] -= x_mean
-        # coord2[0] -= x_mean
-
-        # coord1[1] -= y_mean
-        # coord2[1] -= y_mean
 
         m = y_v1 / x_v1
         b = coord1[1] - m * coord1[0]
@@ -71,9 +55,7 @@ class FishHeadTailDetector:
         y, x = mask_crop.nonzero()
         y_target = m * x + b
 
-        x_pts = [0, width]
-        y_pts = np.array([b, m * width + b])
-
+        # Find the full line
         points_along_line = np.where(np.abs(y - y_target) < 1)
         x = x[points_along_line]
         y = y[points_along_line]
@@ -91,6 +73,50 @@ class FishHeadTailDetector:
         right_coord[1] += y_min
 
         return left_coord, right_coord
+
+    def _pca_find_left_right(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+        # Find the initial left/right coord
+        left_coord, right_coord, _ = self._pca_find_left_right(mask)
+
+        # Draw a line
+        line_direction = (right_coord - left_coord) / np.linalg.norm(
+            right_coord - left_coord
+        )
+        perp_direction = np.array([line_direction[1], line_direction[0]])
+        mid_point = (left_coord) + (right_coord - left_coord) / 2
+
+        height, width = mask.shape
+        m = perp_direction[1] / perp_direction[0]
+        b = mid_point[1] - m * mid_point[0]
+
+        x_coord = np.tile(np.arange(width), (height, 1))
+        y_coord = np.tile(np.arange(height), (width, 1)).T
+
+        left_mask = np.logical_and((m * x_coord + b) > y_coord, mask)
+        right_mask = np.logical_and((m * x_coord + b) < y_coord, mask)
+
+        left_left_coord, _, left_eigen_value = self._pca_find_left_right(left_mask)
+        _, right_right_coord, right_eigen_value = self._pca_find_left_right(right_mask)
+
+        # The greater eigen value means more symmetry.
+        # Maybe fish tails are more symmetrical than head?
+        if left_eigen_value < right_eigen_value:
+            tail_coord = right_right_coord
+            y, x = left_mask.nonzero()
+            pos = x.argmin()
+            x = x[pos]
+            y = y[pos]
+            head_coord = np.array([x, y])
+
+        else:
+            tail_coord = left_left_coord
+            y, x = right_mask.nonzero()
+            pos = x.argmax()
+            x = x[pos]
+            y = y[pos]
+            head_coord = np.array([x, y])
+
+        return tail_coord, head_coord
 
 
 if __name__ == "__main__":
