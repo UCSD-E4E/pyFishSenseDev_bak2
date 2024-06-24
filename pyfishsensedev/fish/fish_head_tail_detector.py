@@ -72,7 +72,7 @@ class FishHeadTailDetector:
         left_coord[1] += y_min
         right_coord[1] += y_min
 
-        return left_coord, right_coord, evals[:, sort_indices[0]]
+        return left_coord, right_coord, evals[sort_indices[0]]
 
     def find_head_tail(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         # Find the initial left/right coord
