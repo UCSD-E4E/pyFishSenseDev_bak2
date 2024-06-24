@@ -74,7 +74,7 @@ class FishHeadTailDetector:
 
         return left_coord, right_coord
 
-    def _pca_find_left_right(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
+    def find_head_tail(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray]:
         # Find the initial left/right coord
         left_coord, right_coord, _ = self._pca_find_left_right(mask)
 
