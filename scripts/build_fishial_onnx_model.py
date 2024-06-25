@@ -26,10 +26,10 @@ def main():
     onnx_model = onnx.load(onnx_file)
     onnx.checker.check_model(onnx_model)
 
-    optimized_model = onnxoptimizer.optimize(onnx_model)
-    onnx.checker.check_model(optimized_model)
+    # optimized_model = onnxoptimizer.optimize(onnx_model)
+    # onnx.checker.check_model(optimized_model)
 
-    onnx.save(optimized_model, onnx_file)
+    onnx.save(onnx_model, onnx_file)
 
 
 if __name__ == "__main__":

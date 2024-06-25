@@ -14,8 +14,8 @@ scikit-image = "^0.21.0"
 rawpy = "^0.18.1"
 Pillow = "^10.0.1"
 requests = "^2.32.2"
-torch = "^2.1.0"
-torchvision = "^0.16.0"
+torch = { version = "^2.1.0", source="torch"}
+torchvision = { version = "^0.17.0", source="torch"}
 wheel = "^0.41.3"
 pandas = "^2.2.1"
 numpy = "^1.26.4"
@@ -30,6 +30,11 @@ pytest = "^8.2.0"
 nas-unzip = {git = "https://github.com/UCSD-E4E/synology-download.git"}
 onnx = "^1.16.0"
 onnxoptimizer = "^0.3.13"
+
+[[tool.poetry.source]]
+name = "torch"
+url = "https://download.pytorch.org/whl/cu121"
+priority = "supplemental"
 
 [build-system]
 requires = ["poetry-core"]
