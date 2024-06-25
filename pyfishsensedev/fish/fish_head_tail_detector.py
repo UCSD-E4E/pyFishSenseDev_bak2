@@ -95,7 +95,7 @@ class FishHeadTailDetector:
         left_mask = np.logical_and((m * x_coord + b) > y_coord, mask)
         right_mask = np.logical_and((m * x_coord + b) < y_coord, mask)
 
-        left_left_coord, _, left_eigen_value = self._pca_find_left_right(left_mask)
+        _, left_right_coord, left_eigen_value = fish_head_tail_detector._pca_find_left_right(left_mask)
         _, right_right_coord, right_eigen_value = self._pca_find_left_right(right_mask)
 
         # The greater eigen value means more symmetry.
@@ -109,9 +109,9 @@ class FishHeadTailDetector:
             head_coord = np.array([x, y])
 
         else:
-            tail_coord = left_left_coord
+            tail_coord = left_right_coord
             y, x = right_mask.nonzero()
-            pos = x.argmax()
+            pos = x.argmin()
             x = x[pos]
             y = y[pos]
             head_coord = np.array([x, y])
