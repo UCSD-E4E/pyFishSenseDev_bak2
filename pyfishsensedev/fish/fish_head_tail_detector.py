@@ -6,9 +6,7 @@ import numpy as np
 
 
 class FishHeadTailDetector:
-    def find_head_tail(
-        self, mask: np.ndarray
-    ) -> Tuple[np.ndarray, np.ndarray, float]:
+    def find_head_tail(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
         # Find all the nonzero points.  These are the mask.
         y, x = mask.nonzero()
         x_min, x_max, y_min, y_max = [x.min(), x.max(), y.min(), y.max()]
@@ -72,7 +70,7 @@ class FishHeadTailDetector:
         left_coord[1] += y_min
         right_coord[1] += y_min
 
-        return left_coord, right_coord, evals[sort_indices[0]]
+        return left_coord, right_coord
 
 
 if __name__ == "__main__":
