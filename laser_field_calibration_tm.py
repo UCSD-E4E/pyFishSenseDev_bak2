@@ -68,7 +68,7 @@ def detect_corners_of_template(img: np.ndarray, template: np.ndarray):
         print(f"Testing scalar {s} with template size {t_w}x{t_h}...")
 
         # Use TM_CCOEFF template matching
-        result = cv2.matchTemplate(img, template_copy, cv2.TM_CCOEFF_NORMED)
+        result = cv2.matchTemplate(img, template_copy, cv2.TM_CCOEFF)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
         print(f"Max value is {max_val}.")
 
