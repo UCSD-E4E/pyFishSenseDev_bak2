@@ -43,7 +43,7 @@ def find_correlating_points(img: np.ndarray, template: np.ndarray):
     plt.show()
 
 def main():
-    slate_path = "./test_data/blg_template.jpg"
+    slate_path = "./test_data/slate.jpg"
     if len(sys.argv) != 2:
         print(f"Usage: python3 {os.path.basename(__file__)} <image path>")
         return
