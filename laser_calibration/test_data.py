@@ -1,14 +1,18 @@
-# Script to test commercial/non-commercial implementations of SuperPoint+LightGlue
-# WARNING: Ensure the correct use of licensing
+# Script to test commercial/non-commercial implementations of SuperPoint+LightGlue.
+# Usage: python3 test_data.py [-c] <data_dir>
+# [-c]: Flag to enable the non-commercial implementation of SuperPoint
+# A slate image must be in the specified data directory. Results will be saved in the appropriate subdirectory.
+# WARNING: Ensure the correct use of licensing.
 
 import sys
 import os
+import argparse
 
 import cv2
 import matplotlib.pyplot as plt
 import glob
 
-import superpoint_inference_com
+import superpoint_inference
 
 from utils import load_image
 import viz2d
@@ -24,17 +28,18 @@ def visualize_matches(image0: Image, m_kpts0, image1: Image, m_kpts1, output_pat
     viz2d.plot_matches(m_kpts0, m_kpts1, color="lime", lw=0.2)
     if save_fig:
         plt.savefig(f"{output_path}/{image1.name}", bbox_inches='tight')
-    if show_fig:
-        plt.show()
+        print(f"    Output saved to {output_path}/{image1.name}.")
+    if show_fig: plt.show()
     plt.close()
 
-# Given a dir path of the calibration images, return a list of image objects
-def load_images(cal_path):
-    glob_list = glob.glob(cal_path + '/*.PNG') + glob.glob(cal_path + '/*.png') + glob.glob(cal_path + '/*.JPG') + glob.glob(cal_path + '/*.jpg')
+# Given a path to the data and an optional matching string, return a list of image objects
+def load_images(data_path, matching_string=''):
+    extensions = ['.PNG', '.png', '.JPG', '.jpg']
+    path = f'{data_path}/{matching_string}*'
+    glob_list = [glob.glob(path + ext) for ext in extensions]
+    glob_list = sum(glob_list, [])
     glob_list.sort()
-    imgs = list()
-    for img in glob_list:
-        imgs.append(Image(img))
+    imgs = [Image(img) for img in glob_list]
     return imgs
 
 # Given an image path and a scale, resize the image and save it
@@ -43,36 +48,45 @@ def resize_and_save(img_path, scale):
 
 def main():
     #sys.stderr = open(os.devnull, 'w')
-
-    # Get image paths
-    if len(sys.argv) != 4:
-        print(f"Usage: python3 {os.path.basename(__file__)} <slate path> <image dir path> <output dir dest>")
-        return
-    slate_path = sys.argv[1]
-    cal_dir_path = sys.argv[2]
-    output_dir_path = sys.argv[3]
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "dir_path", 
+        type=str, 
+        help="Path to a directory containing your data."
+    )
+    parser.add_argument(
+        "-c",
+        "--noncom-license",
+        action="store_true",
+        help="Use this if you want to use the non-commercial version of SuperPoint.",
+    )
+    args = parser.parse_args()
+    data_dir = args.dir_path
 
     # get our Image objects
-    slate = Image(slate_path)
-    cals = load_images(cal_dir_path)
+    print("Loading images...")
+    cals, slates = load_images(data_dir), load_images(data_dir, matching_string='slate')
+    if len(slates) == 0: sys.exit(f"Could not find a slate image in {data_dir} with the format slate{'{*}.{ext}'}")
+    slate = slates[0] # we only want one slate
+    print(f"Using {slate.name} as the template.")
 
     # run our images
+    com_license = False if args.noncom_license else True
+    results_dir = f"{data_dir}/results/{'commercial' if com_license else 'non_commercial'}"
+    if not os.path.exists(results_dir):
+        os.makedirs(results_dir)
     for c in cals:
-        print(f"Processing {c.name}...")
+        if 'slate' in c.name: continue # ensuring we're not processing a slate
 
-        slate_feats, cal_feats, matches01 = superpoint_inference_com.run_inference(slate.image, c.image)
+        print(f"==== Processing {c.name} ====")
+
+        slate_feats, cal_feats, matches01 = superpoint_inference.run_inference(slate.image, c.image, com_license=com_license)
 
         slate_keypoints, cal_keypoints, matches = slate_feats['keypoints'], cal_feats['keypoints'], matches01['matches']
         slate_matches, cal_matches = slate_keypoints[matches[..., 0]], cal_keypoints[matches[..., 1]]
 
-        print(f"    # Keypoints: {len(slate_keypoints)}")
-        print(f"    # Matches: {len(cal_matches)}")
-        print(f"    # Descriptors: {len(cal_feats['descriptors'])}")
-        print(f"    Descriptors: {cal_feats['descriptors']}")
-        print(f"    Matches: {cal_matches}")
-        visualize_matches(slate, slate_matches, c, cal_matches, output_dir_path, save_fig=True, show_fig=False)
-
-    print(f"All outputs saved to {output_dir_path}.")
+        print(f"    Found {len(cal_keypoints)} keypoints and {len(cal_matches)} matches.")
+        visualize_matches(slate, slate_matches, c, cal_matches, results_dir, save_fig=True, show_fig=False)
 
 if __name__ == "__main__":
     main()
