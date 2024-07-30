@@ -5,7 +5,8 @@
 # A slate image must be in the specified data directory. Results will be saved in the appropriate subdirectory.
 # WARNING: Ensure the correct use of licensing.
 
-# TODO: Load configurations from a file within the data directory.
+# TODO: Load configurations from a file.
+# TODO: Save feature and match results to a .csv file.
 
 import sys
 import os
@@ -95,20 +96,21 @@ def main():
     # run our images
     preprocess_conf = {
         'crop': 1.5,
-        'gamma': 2.0,
+        'gamma': 2.5,
     }
     com_license = False if args.noncom_license else True
     results_dir = generate_results_path(data_dir, com_license, **preprocess_conf)
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
     matches_count = 0
+    less_six_matches_count = 0
     processed_count = 0
-    lines = ["==== Images Processed ===="]
+    lines = ["==== Images Processed ====\n"]
     for c in cals:
         if 'slate' in c.name: continue # ensure we're not processing a slate
 
         print(f"==== Processing {c.name} ====")
-        lines.append(f"{c.name}:")
+        lines.append(f"{c.name}:\n")
         processed_count += 1
 
         c.image = superpoint_inference.preprocess(c.image, **preprocess_conf) # first round of preprocessing
@@ -120,20 +122,28 @@ def main():
         slate_matches, cal_matches = slate_keypoints[matches[..., 0]], cal_keypoints[matches[..., 1]]
 
         matches_count += len(cal_matches)
+        if len(cal_matches) < 6:
+            less_six_matches_count += 1
         print(f"    Found {len(cal_keypoints)} features and {len(cal_matches)} matches.")
-        lines.append(f"    Features: {len(cal_keypoints)}")
-        lines.append(f"    Matches: {len(cal_matches)}")
+        lines.append(f"    Features: {len(cal_keypoints)}\n")
+        lines.append(f"    Matches: {len(cal_matches)}\n")
         visualize_matches(slate, slate_matches, c, cal_matches, results_dir, save_fig=True, show_fig=False)
     
     # Write to results.txt
     print(f"Found a total of {matches_count} matches.")
-    f = open(results_dir + 'results.txt', 'w')
-    recap_lines = [f"Processed a total of {processed_count} images.", " ",
-                   f"Used {slate.name} as the template.", " ", f"Found a total of {matches_count} matches.", " "]
-    if com_license: recap_lines.push(["WARNING: NON-COMMERCIAL USE OF SUPERPOINT!", " "])
+    recap_lines = [f"==== SLATE MATCHING RESULTS ====\n", "\n",
+                   f"Results for: {data_dir}", "\n",
+                   f"Processed a total of {processed_count} images.\n", "\n",
+                   f"Used {slate.name} as the template.\n", "\n",
+                   f"Found a total of {matches_count} matches.\n", "\n",
+                   f"There are {less_six_matches_count} images with less than 6 matches.\n", "\n"]
+    if not com_license: recap_lines.insert(0, "WARNING: NON-COMMERCIAL USE OF SUPERPOINT!\n\n")
     if len(preprocess_conf) > 0:
+        recap_lines.append("Preprocessing Config:\n")
         for k, i in preprocess_conf.items():
-            recap_lines.append(f"    {k} = {i}")
+            recap_lines.append(f"    {k} = {i}\n")
+        recap_lines.append("\n")
+    f = open(results_dir + '/results.txt', 'w')
     f.writelines(recap_lines + lines)
     f.close()
 
