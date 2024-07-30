@@ -3,6 +3,8 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, List, Optional, Tuple, Union
 
+import superpoint_inference
+
 import cv2
 import kornia
 import numpy as np

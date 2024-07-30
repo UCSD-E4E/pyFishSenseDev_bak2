@@ -1,8 +1,11 @@
 # Script to test commercial/non-commercial implementations of SuperPoint+LightGlue.
-# Usage: python3 test_data.py [-c] <data_dir>
-# [-c]: Flag to enable the non-commercial implementation of SuperPoint
+# Usage: python3 test_data.py [-n] [-p] <data_dir>
+# [-n]: Use this if you want to use the non-commercial version of SuperPoint.
+# [-p]: Use this to disable saving results in a path name based on preprocessing configurations.
 # A slate image must be in the specified data directory. Results will be saved in the appropriate subdirectory.
 # WARNING: Ensure the correct use of licensing.
+
+# TODO: Load configurations from a file within the data directory.
 
 import sys
 import os
@@ -17,15 +20,36 @@ import superpoint_inference
 from utils import load_image
 import viz2d
 
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "dir_path", 
+    type=str, 
+    help="Path to a directory containing your data."
+)
+parser.add_argument(
+    "-n",
+    "--noncom-license",
+    action="store_true",
+    help="Use this if you want to use the non-commercial version of SuperPoint.",
+)
+parser.add_argument(
+    "-p",
+    "--disable-preprocessing-path-naming",
+    action="store_true",
+    help="Use this to disable saving results in a path name based on preprocessing configurations.",
+)
+args = parser.parse_args()
+
 class Image():
     def __init__(self, img_path):
         self.image = load_image(img_path) # load each image as a torch.Tensor on GPU with shape (3,H,W), normalized in [0,1]
         self.name = os.path.basename(img_path)
         self.img_path = img_path
 
-def visualize_matches(image0: Image, m_kpts0, image1: Image, m_kpts1, output_path, text=None, save_fig=False, show_fig=True):
+def visualize_matches(image0: Image, m_kpts0, image1: Image, m_kpts1, output_path, save_fig=False, show_fig=True):
     axes = viz2d.plot_images([image0.image, image1.image])
     viz2d.plot_matches(m_kpts0, m_kpts1, color="lime", lw=0.2)
+    viz2d.add_text(0, f'{len(m_kpts1)} matches', fs=20)
     if save_fig:
         plt.savefig(f"{output_path}/{image1.name}", bbox_inches='tight')
         print(f"    Output saved to {output_path}/{image1.name}.")
@@ -46,21 +70,19 @@ def load_images(data_path, matching_string=''):
 def resize_and_save(img_path, scale):
     pass
 
+def generate_results_path(data_dir, com_license, **conf):
+    base_path = f"{data_dir}/results/{'commercial' if com_license else 'non_commercial'}"
+    if args.disable_preprocessing_path_naming: return base_path
+    ext = '/'
+    if len(conf) == 0: ext = f'{ext}no_preprocessing'
+    else:
+        for k, i in conf.items():
+            ext = f'{ext}{i}_{k}+'
+        ext = ext[:-1]
+    return base_path + ext
+
 def main():
     #sys.stderr = open(os.devnull, 'w')
-    parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "dir_path", 
-        type=str, 
-        help="Path to a directory containing your data."
-    )
-    parser.add_argument(
-        "-c",
-        "--noncom-license",
-        action="store_true",
-        help="Use this if you want to use the non-commercial version of SuperPoint.",
-    )
-    args = parser.parse_args()
     data_dir = args.dir_path
 
     # get our Image objects
@@ -71,22 +93,49 @@ def main():
     print(f"Using {slate.name} as the template.")
 
     # run our images
+    preprocess_conf = {
+        'crop': 1.5,
+        'gamma': 2.0,
+    }
     com_license = False if args.noncom_license else True
-    results_dir = f"{data_dir}/results/{'commercial' if com_license else 'non_commercial'}"
+    results_dir = generate_results_path(data_dir, com_license, **preprocess_conf)
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
+    matches_count = 0
+    processed_count = 0
+    lines = ["==== Images Processed ===="]
     for c in cals:
-        if 'slate' in c.name: continue # ensuring we're not processing a slate
+        if 'slate' in c.name: continue # ensure we're not processing a slate
 
         print(f"==== Processing {c.name} ====")
+        lines.append(f"{c.name}:")
+        processed_count += 1
 
-        slate_feats, cal_feats, matches01 = superpoint_inference.run_inference(slate.image, c.image, com_license=com_license)
+        c.image = superpoint_inference.preprocess(c.image, **preprocess_conf) # first round of preprocessing
+
+        slate_feats, cal_feats, matches01, new_img = superpoint_inference.run_inference(slate.image, c.image, com_license=com_license)
+        c.image = new_img
 
         slate_keypoints, cal_keypoints, matches = slate_feats['keypoints'], cal_feats['keypoints'], matches01['matches']
         slate_matches, cal_matches = slate_keypoints[matches[..., 0]], cal_keypoints[matches[..., 1]]
 
-        print(f"    Found {len(cal_keypoints)} keypoints and {len(cal_matches)} matches.")
+        matches_count += len(cal_matches)
+        print(f"    Found {len(cal_keypoints)} features and {len(cal_matches)} matches.")
+        lines.append(f"    Features: {len(cal_keypoints)}")
+        lines.append(f"    Matches: {len(cal_matches)}")
         visualize_matches(slate, slate_matches, c, cal_matches, results_dir, save_fig=True, show_fig=False)
+    
+    # Write to results.txt
+    print(f"Found a total of {matches_count} matches.")
+    f = open(results_dir + 'results.txt', 'w')
+    recap_lines = [f"Processed a total of {processed_count} images.", " ",
+                   f"Used {slate.name} as the template.", " ", f"Found a total of {matches_count} matches.", " "]
+    if com_license: recap_lines.push(["WARNING: NON-COMMERCIAL USE OF SUPERPOINT!", " "])
+    if len(preprocess_conf) > 0:
+        for k, i in preprocess_conf.items():
+            recap_lines.append(f"    {k} = {i}")
+    f.writelines(recap_lines + lines)
+    f.close()
 
 if __name__ == "__main__":
     main()

@@ -1,11 +1,41 @@
-# Commercial inference use of SuperPoint+LightGlue
+# Inference use of SuperPoint+LightGlue
+# TODO: Use an object-oriented approach to allow for batch inferencing
 
 import torch
+import cv2
+import kornia
+import matplotlib.pyplot as plt
 
+from types import SimpleNamespace
 from utils import rbd
 from models.lightglue import LightGlue
 from models.superpoint_pytorch import SuperPoint
 from models.superpoint import SuperPoint as NonCommercialSuperPoint
+
+def preprocess(img, **conf):
+    default_conf = {
+        'contrast': None,
+        'gamma': None,
+        'brightness': None,
+        'sharpness': None,
+        'crop': None,
+    }
+    conf = SimpleNamespace(**{**default_conf, **conf})
+
+    if conf.contrast != None:
+        img = kornia.enhance.adjust_contrast(img, conf.contrast)
+    if conf.gamma != None:
+        img = kornia.enhance.adjust_gamma(img, conf.gamma)
+    if conf.brightness != None:
+        img = kornia.enhance.adjust_brightness(img, conf.brightness)
+    if conf.sharpness != None:
+        img = kornia.enhance.sharpness(img, conf.sharpness)
+    if conf.crop != None:
+        img = img.unsqueeze(0)
+        img = kornia.geometry.transform.scale(img, torch.Tensor([conf.crop]))
+        img = img.squeeze(0)
+
+    return img
 
 def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True):
     """Given a slate and calibration image, return their respective features and matches
@@ -43,8 +73,8 @@ def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True):
             stop: int
             prune0: [B x M]
             prune1: [B x N]
-    """
-
+    """ 
+   
     with torch.no_grad():
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         torch.set_grad_enabled(False)
@@ -55,7 +85,7 @@ def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True):
             'features': 'superpoint',
             'depth_confidence': -1,
             'width_confidence': -1,
-            'filter_threshold': 0.1 # 0.4
+            'filter_threshold': 0.4 # 0.4
         }
         extractor = (SuperPoint(**extractor_parameters).eval().to(device) if com_license
                     else NonCommercialSuperPoint(**extractor_parameters).eval().to(device))
@@ -72,4 +102,4 @@ def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True):
             rbd(x) for x in [feats0, feats1, matches01]
         ]  # remove batch dimension
 
-    return feats0, feats1, matches01
+    return feats0, feats1, matches01, image1
