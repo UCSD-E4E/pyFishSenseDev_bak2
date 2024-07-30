@@ -96,7 +96,7 @@ def main():
     # run our images
     preprocess_conf = {
         'crop': 1.5,
-        'gamma': 2.5,
+        'gamma': 2.0,
     }
     com_license = False if args.noncom_license else True
     results_dir = generate_results_path(data_dir, com_license, **preprocess_conf)
@@ -113,10 +113,7 @@ def main():
         lines.append(f"{c.name}:\n")
         processed_count += 1
 
-        c.image = superpoint_inference.preprocess(c.image, **preprocess_conf) # first round of preprocessing
-
-        slate_feats, cal_feats, matches01, new_img = superpoint_inference.run_inference(slate.image, c.image, com_license=com_license)
-        c.image = new_img
+        slate_feats, cal_feats, matches01 = superpoint_inference.run_inference(slate.image, c.image, com_license=com_license, preprocess_conf=preprocess_conf)
 
         slate_keypoints, cal_keypoints, matches = slate_feats['keypoints'], cal_feats['keypoints'], matches01['matches']
         slate_matches, cal_matches = slate_keypoints[matches[..., 0]], cal_keypoints[matches[..., 1]]
@@ -131,12 +128,12 @@ def main():
     
     # Write to results.txt
     print(f"Found a total of {matches_count} matches.")
-    recap_lines = [f"==== SLATE MATCHING RESULTS ====\n", "\n",
-                   f"Results for: {data_dir}", "\n",
-                   f"Processed a total of {processed_count} images.\n", "\n",
-                   f"Used {slate.name} as the template.\n", "\n",
-                   f"Found a total of {matches_count} matches.\n", "\n",
-                   f"There are {less_six_matches_count} images with less than 6 matches.\n", "\n"]
+    recap_lines = [f"==== SLATE MATCHING RESULTS ====\n\n",
+                   f"Results for: {data_dir}\n",
+                   f"Processed a total of {processed_count} images.\n\n",
+                   f"Used {slate.name} as the template.\n\n",
+                   f"Found a total of {matches_count} matches.\n\n",
+                   f"There are {less_six_matches_count} images with less than 6 matches.\n\n"]
     if not com_license: recap_lines.insert(0, "WARNING: NON-COMMERCIAL USE OF SUPERPOINT!\n\n")
     if len(preprocess_conf) > 0:
         recap_lines.append("Preprocessing Config:\n")

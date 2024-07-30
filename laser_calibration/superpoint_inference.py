@@ -1,7 +1,8 @@
 # Inference use of SuperPoint+LightGlue
-# TODO: Use an object-oriented approach to allow for batch inferencing
+# TODO: Allow for batch inferencing
 
 import torch
+import numpy as np
 import cv2
 import kornia
 import matplotlib.pyplot as plt
@@ -12,32 +13,36 @@ from models.lightglue import LightGlue
 from models.superpoint_pytorch import SuperPoint
 from models.superpoint import SuperPoint as NonCommercialSuperPoint
 
-def preprocess(img, **conf):
-    default_conf = {
-        'contrast': None,
-        'gamma': None,
-        'brightness': None,
-        'sharpness': None,
-        'crop': None,
-    }
-    conf = SimpleNamespace(**{**default_conf, **conf})
+class Preprocess():
+    def __init__(self, img, **conf):
+        self.default_conf = {
+            'contrast': None,
+            'gamma': None,
+            'brightness': None,
+            'sharpness': None,
+            'crop': None,
+        }
+        self.conf = SimpleNamespace(**{**self.default_conf, **conf})
+        self.img = img
+        self.process()
+    def process(self):
+        if self.conf.contrast != None:
+            self.img = kornia.enhance.adjust_contrast(self.img, self.conf.contrast)
+        if self.conf.gamma != None:
+            self.img = kornia.enhance.adjust_gamma(self.img, self.conf.gamma)
+        if self.conf.brightness != None:
+            self.img = kornia.enhance.adjust_brightness(self.img, self.conf.brightness)
+        if self.conf.sharpness != None:
+            self.img = kornia.enhance.sharpness(self.img, self.conf.sharpness)
+        if self.conf.crop != None:
+            self.img = self.img.unsqueeze(0)
+            original_h, original_w = self.img.shape[:2]
+            center = [original_w // 2, original_h // 2]
+            self.img = kornia.geometry.transform.scale(self.img, torch.Tensor([self.conf.crop]), center=torch.Tensor([center]))
+            self.img = self.img.squeeze(0)
+        return self.img
 
-    if conf.contrast != None:
-        img = kornia.enhance.adjust_contrast(img, conf.contrast)
-    if conf.gamma != None:
-        img = kornia.enhance.adjust_gamma(img, conf.gamma)
-    if conf.brightness != None:
-        img = kornia.enhance.adjust_brightness(img, conf.brightness)
-    if conf.sharpness != None:
-        img = kornia.enhance.sharpness(img, conf.sharpness)
-    if conf.crop != None:
-        img = img.unsqueeze(0)
-        img = kornia.geometry.transform.scale(img, torch.Tensor([conf.crop]))
-        img = img.squeeze(0)
-
-    return img
-
-def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True):
+def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True, preprocess_conf={}):
     """Given a slate and calibration image, return their respective features and matches
 
     B: batch size
@@ -75,6 +80,9 @@ def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True):
             prune1: [B x N]
     """ 
    
+    # First round of preprocessing
+    image1_preprocessed = Preprocess(image1, **preprocess_conf)
+
     with torch.no_grad():
         device = 'cuda' if torch.cuda.is_available() else 'cpu'
         torch.set_grad_enabled(False)
@@ -94,7 +102,7 @@ def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True):
         # Extract features
         if not com_license: print("    WARNING: USING THE NON-COMMERCIAL VERSION OF SUPERPOINT!")
         feats0 = extractor.extract(image0.to(device))
-        feats1 = extractor.extract(image1.to(device))
+        feats1 = extractor.extract(image1_preprocessed.img.to(device))
 
         # Get matches
         matches01 = matcher({"image0": feats0, "image1": feats1})
@@ -102,4 +110,8 @@ def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True):
             rbd(x) for x in [feats0, feats1, matches01]
         ]  # remove batch dimension
 
-    return feats0, feats1, matches01, image1
+        # Return to original scale
+        if image1_preprocessed.conf.crop != None:
+            feats1['keypoints'] = feats1['keypoints'] / image1_preprocessed.conf.crop
+
+    return feats0, feats1, matches01
