@@ -20,7 +20,7 @@ import cv2
 import matplotlib.pyplot as plt
 import glob
 
-import match_images
+from match_images import ImageMatcher
 
 from utils import load_image
 import viz2d
@@ -135,6 +135,7 @@ def main():
     names_list = []
     lines = ["==== Images Processed ====\n"]
     slate.load()
+    matcher = ImageMatcher(slate.image, com_license=com_license, preprocess_conf=preprocess_conf)
     for c in cals:
         if slate.name == c.name: continue # ensure we're not processing a slate
         
@@ -143,7 +144,7 @@ def main():
         processed_count += 1
 
         c.load() # load our image
-        slate_matches, cal_matches = match_images.run_inference(slate.image, c.image, com_license=com_license, preprocess_conf=preprocess_conf)
+        slate_matches, cal_matches = matcher.process(c.image)
         matches_list.append([[s,c] for s,c in zip(slate_matches, cal_matches)])
         names_list.append(c.name)
 

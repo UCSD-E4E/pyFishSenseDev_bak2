@@ -37,49 +37,59 @@ class Preprocess():
             self.img = kornia.geometry.transform.scale(self.img, torch.Tensor([self.conf.crop]), center=torch.Tensor([center]))
             self.img = self.img.squeeze(0)
 
-def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True, preprocess_conf={}):
-    """Given a slate and calibration image, return their respective features and matches
-    Input:
-        image0: torch.Tensor
-        image1: torch.Tensor
-    Output:
-        TODO
-    """ 
-    # First round of preprocessing
-    image1_preprocessed = Preprocess(image1, **preprocess_conf)
+class ImageMatcher():
+    def __init__(self, template: torch.Tensor, com_license=True, preprocess_conf={}):
+        self.image0 = template
+        self.feats0 = None
+        self.com_license=com_license
+        self.preprocess_conf=preprocess_conf
+    def process(self, image1: torch.Tensor):
+        """Given a slate and calibration image, return their respective features and matches
+        Input:
+            image0: torch.Tensor
+            image1: torch.Tensor
+        Output:
+            TODO
+        """ 
+        # First round of preprocessing
+        image1_preprocessed = Preprocess(image1, **self.preprocess_conf)
 
-    with torch.no_grad():
-        device = 'cuda' if torch.cuda.is_available() else 'cpu'
-        torch.set_grad_enabled(False)
+        with torch.no_grad():
+            device = 'cuda' if torch.cuda.is_available() else 'cpu'
+            torch.set_grad_enabled(False)
 
-        # SuperPoint+LightGlue
-        extractor_parameters = {'max_num_keypoints': None,}
-        matcher_parameters = {
-            'features': 'superpoint',
-            'depth_confidence': -1,
-            'width_confidence': -1,
-            'filter_threshold': 0.4 # 0.4
-        }
-        extractor = (SuperPoint(**extractor_parameters).eval().to(device) if com_license
-                    else NonCommercialSuperPoint(**extractor_parameters).eval().to(device))
-        matcher = LightGlue(**matcher_parameters).eval().to(device)
+            # SuperPoint+LightGlue
+            extractor_parameters = {'max_num_keypoints': None,}
+            matcher_parameters = {
+                'features': 'superpoint',
+                'depth_confidence': -1,
+                'width_confidence': -1,
+                'filter_threshold': 0.4 # 0.4
+            }
+            extractor = (SuperPoint(**extractor_parameters).eval().to(device) if self.com_license
+                        else NonCommercialSuperPoint(**extractor_parameters).eval().to(device))
+            matcher = LightGlue(**matcher_parameters).eval().to(device)
 
-        # Extract features
-        if not com_license: print("    WARNING: USING THE NON-COMMERCIAL VERSION OF SUPERPOINT!")
-        feats0 = extractor.extract(image0.to(device))
-        feats1 = extractor.extract(image1_preprocessed.img.to(device))
+            # Extract features
+            if not self.com_license: print("    WARNING: USING THE NON-COMMERCIAL VERSION OF SUPERPOINT!")
+            if self.feats0 == None: # so we don't have to extract template keypoints every time
+                self.feats0 = extractor.extract(self.image0.to(device))
+            else:
+                for k,_ in self.feats0.items():
+                    self.feats0[k] = torch.unsqueeze(self.feats0[k], 0)
+            feats1 = extractor.extract(image1_preprocessed.img.to(device))
 
-        # Get matches
-        matches01 = matcher({"image0": feats0, "image1": feats1})
-        feats0, feats1, matches01 = [
-            rbd(x) for x in [feats0, feats1, matches01]
-        ]  # remove batch dimension
+            # Get matches
+            matches01 = matcher({"image0": self.feats0, "image1": feats1})
+            self.feats0, feats1, matches01 = [
+                rbd(x) for x in [self.feats0, feats1, matches01]
+            ]  # remove batch dimension
 
-        # Return to original scale
-        if image1_preprocessed.conf.crop != None:
-            feats1['keypoints'] = feats1['keypoints'] / image1_preprocessed.conf.crop
+            # Return to original scale
+            if image1_preprocessed.conf.crop != None:
+                feats1['keypoints'] = feats1['keypoints'] / image1_preprocessed.conf.crop
 
-    feats0_keypoints, feats1_keypoints, matches = feats0['keypoints'], feats1['keypoints'], matches01['matches']
-    feats0_matches, feats1_matches = feats0_keypoints[matches[..., 0]], feats1_keypoints[matches[..., 1]]
-    
-    return feats0_matches, feats1_matches
+        feats0_keypoints, feats1_keypoints, matches = self.feats0['keypoints'], feats1['keypoints'], matches01['matches']
+        feats0_matches, feats1_matches = feats0_keypoints[matches[..., 0]], feats1_keypoints[matches[..., 1]]
+        
+        return feats0_matches, feats1_matches
