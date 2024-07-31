@@ -12,6 +12,7 @@ import os
 import argparse
 import yaml
 import gc
+import pandas as pd
 
 import cv2
 import matplotlib.pyplot as plt
@@ -94,6 +95,10 @@ def generate_results_path(data_dir, com_license, **conf):
         ext = ext[:-1]
     return base_path + ext
 
+def pairs_to_csv(kps1, kps2, output):
+    df = pd.DataFrame({'kps1': kps1, 'kps2': kps2})
+    df.to_csv(output, header=False, index=False)
+
 def main():
     #sys.stderr = open(os.devnull, 'w')
     data_dir = args.dir_path
@@ -123,6 +128,7 @@ def main():
     # process the images
     matches_count = less_six_matches_count = processed_count = 0
     lines = ["==== Images Processed ====\n"]
+    slate.load()
     for c in cals:
         if slate.name == c.name: continue # ensure we're not processing a slate
 
@@ -130,24 +136,19 @@ def main():
         lines.append(f"{c.name}:\n")
         processed_count += 1
 
-        c.load()
-        slate.load()
-
-        slate_feats, cal_feats, matches01 = superpoint_inference.run_inference(slate.image, c.image, com_license=com_license, preprocess_conf=preprocess_conf)
-
-        slate_keypoints, cal_keypoints, matches = slate_feats['keypoints'], cal_feats['keypoints'], matches01['matches']
-        slate_matches, cal_matches = slate_keypoints[matches[..., 0]], cal_keypoints[matches[..., 1]]
+        c.load() # load our image
+        slate_matches, cal_matches = superpoint_inference.run_inference(slate.image, c.image, com_license=com_license, preprocess_conf=preprocess_conf)
 
         matches_count += len(cal_matches)
         if len(cal_matches) < 6:
             less_six_matches_count += 1
-        print(f"    Found {len(cal_keypoints)} features and {len(cal_matches)} matches.")
-        lines.append(f"    Features: {len(cal_keypoints)}\n")
+        print(f"    Found {len(cal_matches)} matches.")
         lines.append(f"    Matches: {len(cal_matches)}\n")
         visualize_matches(slate, slate_matches, c, cal_matches, results_dir, save_fig=True, show_fig=False)
 
-        c.unload()
-        slate.unload()
+        c.unload() # unload our image to save memory
+        
+    slate.unload()
     
     # Write to results.txt
     print(f"Found a total of {matches_count} matches from {processed_count} images.")

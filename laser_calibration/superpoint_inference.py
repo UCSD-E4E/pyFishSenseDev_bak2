@@ -112,4 +112,7 @@ def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True, 
         if image1_preprocessed.conf.crop != None:
             feats1['keypoints'] = feats1['keypoints'] / image1_preprocessed.conf.crop
 
-    return feats0, feats1, matches01
+    feats0_keypoints, feats1_keypoints, matches = feats0['keypoints'], feats1['keypoints'], matches01['matches']
+    feats0_matches, feats1_matches = feats0_keypoints[matches[..., 0]], feats1_keypoints[matches[..., 1]]
+    
+    return feats0_matches, feats1_matches
