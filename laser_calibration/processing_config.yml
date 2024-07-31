@@ -1,0 +1,6 @@
+preprocess:
+  contrast: null
+  gamma: 2.0 # 2.0
+  brightness: null
+  sharpness: 0.5 # null
+  crop: 1.6 # 1.6

@@ -1,5 +1,4 @@
 # Inference use of SuperPoint+LightGlue
-# TODO: Allow for batch inferencing
 
 import torch
 import numpy as np
