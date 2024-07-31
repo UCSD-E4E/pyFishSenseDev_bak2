@@ -40,7 +40,6 @@ class Preprocess():
             center = [original_w // 2, original_h // 2]
             self.img = kornia.geometry.transform.scale(self.img, torch.Tensor([self.conf.crop]), center=torch.Tensor([center]))
             self.img = self.img.squeeze(0)
-        return self.img
 
 def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True, preprocess_conf={}):
     """Given a slate and calibration image, return their respective features and matches
