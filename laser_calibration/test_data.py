@@ -111,7 +111,6 @@ def main():
     # load our configs
     processing_conf = load_config('processing_config.yml')
     test_config = load_config('test_config.yml')
-    preprocess_conf = processing_conf['preprocess']
     data_conf = test_config['data']
     print("Configs:")
     print(processing_conf)
@@ -125,7 +124,7 @@ def main():
     print(f"Using {slate.name} as the template.")
 
     # generate output path
-    results_dir = generate_results_path(data_dir, com_license, **preprocess_conf)
+    results_dir = generate_results_path(data_dir, com_license, **processing_conf['preprocess'])
     if not os.path.exists(results_dir):
         os.makedirs(results_dir)
 
@@ -135,7 +134,7 @@ def main():
     names_list = []
     lines = ["==== Images Processed ====\n"]
     slate.load()
-    matcher = ImageMatcher(slate.image, com_license=com_license, preprocess_conf=preprocess_conf)
+    matcher = ImageMatcher(slate.image, com_license=com_license, processing_conf=processing_conf)
     for c in cals:
         if slate.name == c.name: continue # ensure we're not processing a slate
         
@@ -152,7 +151,9 @@ def main():
         if len(cal_matches) < 6:
             less_six_matches_count += 1
         print(f"    Found {len(cal_matches)} matches.")
+        print(f"    This is a {'POSITIVE' if len(cal_matches) >= 6 else 'NEGATIVE'} result.")
         lines.append(f"    Matches: {len(cal_matches)}\n")
+        lines.append(f"    Status: {'POSITIVE' if len(cal_matches) >= 6 else 'NEGATIVE'}\n")
         if not args.disable_plot_save:
             visualize_matches(slate, slate_matches, c, cal_matches, results_dir, save_fig=True, show_fig=False)
 
@@ -177,9 +178,9 @@ def main():
                    f"Found a total of {matches_count} matches.\n\n",
                    f"There are {less_six_matches_count} images with less than 6 matches.\n\n"]
     if not com_license: recap_lines.insert(0, "WARNING: NON-COMMERCIAL USE OF SUPERPOINT!\n\n")
-    if len(preprocess_conf) > 0:
+    if len(processing_conf['preprocess']) > 0:
         recap_lines.append("Preprocessing Config:\n")
-        for k, i in preprocess_conf.items():
+        for k, i in processing_conf['preprocess'].items():
             recap_lines.append(f"    {k} = {i}\n")
         recap_lines.append("\n")
     f = open(results_dir + '/results.txt', 'w')

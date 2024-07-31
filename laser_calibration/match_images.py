@@ -38,11 +38,13 @@ class Preprocess():
             self.img = self.img.squeeze(0)
 
 class ImageMatcher():
-    def __init__(self, template: torch.Tensor, com_license=True, preprocess_conf={}):
+    def __init__(self, template: torch.Tensor, com_license=True, processing_conf={}):
         self.image0 = template
         self.feats0 = None
         self.com_license=com_license
-        self.preprocess_conf=preprocess_conf
+        self.preprocess_conf=processing_conf['preprocess']
+        self.matcher_conf=processing_conf['matcher']
+        self.extractor_conf=processing_conf['extractor']
     def process(self, image1: torch.Tensor):
         """Given a slate and calibration image, return their respective features and matches
         Input:
@@ -59,16 +61,20 @@ class ImageMatcher():
             torch.set_grad_enabled(False)
 
             # SuperPoint+LightGlue
-            extractor_parameters = {'max_num_keypoints': None,}
-            matcher_parameters = {
+            def_extractor_conf = {'max_num_keypoints': None,}
+            def_matcher_conf = {
                 'features': 'superpoint',
                 'depth_confidence': -1,
                 'width_confidence': -1,
-                'filter_threshold': 0.4 # 0.4
+                'filter_threshold': 0.5 # 0.4
             }
-            extractor = (SuperPoint(**extractor_parameters).eval().to(device) if self.com_license
-                        else NonCommercialSuperPoint(**extractor_parameters).eval().to(device))
-            matcher = LightGlue(**matcher_parameters).eval().to(device)
+            self.extractor_conf = {**def_extractor_conf, **self.extractor_conf}
+            self.matcher_conf = {**def_matcher_conf, **self.matcher_conf}
+            print(self.extractor_conf)
+            print(self.matcher_conf)
+            extractor = (SuperPoint(**self.extractor_conf).eval().to(device) if self.com_license
+                        else NonCommercialSuperPoint(**self.extractor_conf).eval().to(device))
+            matcher = LightGlue(**self.matcher_conf).eval().to(device)
 
             # Extract features
             if not self.com_license: print("    WARNING: USING THE NON-COMMERCIAL VERSION OF SUPERPOINT!")

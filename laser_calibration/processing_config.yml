@@ -2,5 +2,9 @@ preprocess:
   contrast: null # null
   gamma: 2.0 # 2.0
   brightness: null # null
-  sharpness: 0.5 # 0.5
+  sharpness: null # null
   crop: 1.6 # 1.6
+extractor:
+  max_num_keypoints: null # null
+matcher:
+  filter_threshold: 0.5 # 0.5
