@@ -1,13 +1,10 @@
 # Inference use of SuperPoint+LightGlue
 
 import torch
-import numpy as np
-import cv2
 import kornia
-import matplotlib.pyplot as plt
-
 from types import SimpleNamespace
 from utils import rbd
+
 from models.lightglue import LightGlue
 from models.superpoint_pytorch import SuperPoint
 from models.superpoint import SuperPoint as NonCommercialSuperPoint
@@ -16,10 +13,10 @@ class Preprocess():
     def __init__(self, img, **conf):
         self.default_conf = {
             'contrast': None,
-            'gamma': None,
+            'gamma': 2.0,
             'brightness': None,
-            'sharpness': None,
-            'crop': None,
+            'sharpness': 0.5,
+            'crop': 1.6,
         }
         self.conf = SimpleNamespace(**{**self.default_conf, **conf})
         self.img = img
@@ -42,42 +39,12 @@ class Preprocess():
 
 def run_inference(image0: torch.Tensor, image1: torch.Tensor, com_license=True, preprocess_conf={}):
     """Given a slate and calibration image, return their respective features and matches
-
-    B: batch size
-    M: number of keypoints (feats0)
-    N: number of keypoints (feats1)
-    D: dimensionality of descriptors
-    C: number of channels
-    H: height
-    W: width
-
     Input:
         image0: torch.Tensor
         image1: torch.Tensor
-
     Output:
-        feats0: dict
-            keypoints: [B x M x 2]
-            descriptors: [B x M x D]
-            image: [B x C x H x W]
-            image_size: [B x 2]
-        feats1: dict
-            keypoints: [B x N x 2]
-            descriptors: [B x N x D]
-            image: [B x C x H x W]
-            image_size: [B x 2]
-        matches01: dict
-            matches0: [B x M]
-            matching_scores0: [B x M]
-            matches1: [B x N]
-            matching_scores1: [B x N]
-            matches: List[[Si x 2]]
-            scores: List[[Si]]
-            stop: int
-            prune0: [B x M]
-            prune1: [B x N]
+        TODO
     """ 
-   
     # First round of preprocessing
     image1_preprocessed = Preprocess(image1, **preprocess_conf)
 

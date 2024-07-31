@@ -2,6 +2,7 @@
 # Usage: python3 test_data.py [-n] [-p] <data_dir>
 # [-n]: Use this if you want to use the non-commercial version of SuperPoint.
 # [-p]: Use this to disable saving results in a path name based on preprocessing configurations.
+# [-i]: Use this to disable plot results.
 # A slate image must be in the specified data directory. Results will be saved in the appropriate subdirectory.
 # WARNING: Ensure the correct use of licensing.
 
@@ -13,12 +14,13 @@ import argparse
 import yaml
 import gc
 import pandas as pd
+import torch
 
 import cv2
 import matplotlib.pyplot as plt
 import glob
 
-import laser_calibration.match_images as match_images
+import match_images
 
 from utils import load_image
 import viz2d
@@ -40,6 +42,12 @@ parser.add_argument(
     "--disable-preprocessing-path-naming",
     action="store_true",
     help="Use this to disable saving results in a path name based on preprocessing configurations.",
+)
+parser.add_argument(
+    "-i",
+    "--disable-plot-save",
+    action="store_true",
+    help="Use this to disable plot results.",
 )
 args = parser.parse_args()
 
@@ -95,10 +103,6 @@ def generate_results_path(data_dir, com_license, **conf):
         ext = ext[:-1]
     return base_path + ext
 
-def pairs_to_csv(kps1, kps2, output):
-    df = pd.DataFrame({'kps1': kps1, 'kps2': kps2})
-    df.to_csv(output, header=False, index=False)
-
 def main():
     #sys.stderr = open(os.devnull, 'w')
     data_dir = args.dir_path
@@ -114,7 +118,7 @@ def main():
     print(test_config)
 
     # get our Image objects
-    print("Loading images...")
+    print(f"Loading images from {data_dir}")
     cals, slates = load_images(data_dir), load_images(data_dir, matching_string=data_conf['slate_path_must_include'])
     if len(slates) == 0: sys.exit(f"Could not find a slate image in {data_dir} with the format slate{'{*}.{ext}'}")
     slate = slates[0] # we only want one slate
@@ -127,28 +131,41 @@ def main():
 
     # process the images
     matches_count = less_six_matches_count = processed_count = 0
+    matches_list = []
+    names_list = []
     lines = ["==== Images Processed ====\n"]
     slate.load()
     for c in cals:
         if slate.name == c.name: continue # ensure we're not processing a slate
-
+        
         print(f"==== Processing {c.name} ====")
         lines.append(f"{c.name}:\n")
         processed_count += 1
 
         c.load() # load our image
         slate_matches, cal_matches = match_images.run_inference(slate.image, c.image, com_license=com_license, preprocess_conf=preprocess_conf)
+        matches_list.append([[s,c] for s,c in zip(slate_matches, cal_matches)])
+        names_list.append(c.name)
 
         matches_count += len(cal_matches)
         if len(cal_matches) < 6:
             less_six_matches_count += 1
         print(f"    Found {len(cal_matches)} matches.")
         lines.append(f"    Matches: {len(cal_matches)}\n")
-        visualize_matches(slate, slate_matches, c, cal_matches, results_dir, save_fig=True, show_fig=False)
+        if not args.disable_plot_save:
+            visualize_matches(slate, slate_matches, c, cal_matches, results_dir, save_fig=True, show_fig=False)
 
         c.unload() # unload our image to save memory
         
     slate.unload()
+
+    # Store results in matches.csv
+    csv_data = {
+        'image_names': names_list,
+        'keypoint_pairs': matches_list
+    }
+    pd.DataFrame(csv_data).to_csv(results_dir + '/results.csv')
+    print(f"Saved matched keypoint data to {results_dir + '/results.csv'}")
     
     # Write to results.txt
     print(f"Found a total of {matches_count} matches from {processed_count} images.")

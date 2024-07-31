@@ -3,7 +3,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from typing import Callable, List, Optional, Tuple, Union
 
-import laser_calibration.match_images as match_images
+import match_images
 
 import cv2
 import kornia
