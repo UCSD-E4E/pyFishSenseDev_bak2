@@ -18,7 +18,7 @@ import cv2
 import matplotlib.pyplot as plt
 import glob
 
-import superpoint_inference
+import laser_calibration.match_images as match_images
 
 from utils import load_image
 import viz2d
@@ -137,7 +137,7 @@ def main():
         processed_count += 1
 
         c.load() # load our image
-        slate_matches, cal_matches = superpoint_inference.run_inference(slate.image, c.image, com_license=com_license, preprocess_conf=preprocess_conf)
+        slate_matches, cal_matches = match_images.run_inference(slate.image, c.image, com_license=com_license, preprocess_conf=preprocess_conf)
 
         matches_count += len(cal_matches)
         if len(cal_matches) < 6:
