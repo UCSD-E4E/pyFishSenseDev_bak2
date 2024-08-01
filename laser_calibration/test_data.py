@@ -183,6 +183,16 @@ def main():
         for k, i in processing_conf['preprocess'].items():
             recap_lines.append(f"    {k} = {i}\n")
         recap_lines.append("\n")
+    if len(processing_conf['extractor']) > 0:
+        recap_lines.append("Extractor Config:\n")
+        for k, i in processing_conf['extractor'].items():
+            recap_lines.append(f"    {k} = {i}\n")
+        recap_lines.append("\n")
+    if len(processing_conf['matcher']) > 0:
+        recap_lines.append("Matcher Config:\n")
+        for k, i in processing_conf['matcher'].items():
+            recap_lines.append(f"    {k} = {i}\n")
+        recap_lines.append("\n")
     f = open(results_dir + '/results.txt', 'w')
     f.writelines(recap_lines + lines)
     f.close()

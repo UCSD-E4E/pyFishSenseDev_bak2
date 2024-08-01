@@ -66,12 +66,10 @@ class ImageMatcher():
                 'features': 'superpoint',
                 'depth_confidence': -1,
                 'width_confidence': -1,
-                'filter_threshold': 0.5 # 0.4
+                'filter_threshold': 0.5 # 0.5
             }
             self.extractor_conf = {**def_extractor_conf, **self.extractor_conf}
             self.matcher_conf = {**def_matcher_conf, **self.matcher_conf}
-            print(self.extractor_conf)
-            print(self.matcher_conf)
             extractor = (SuperPoint(**self.extractor_conf).eval().to(device) if self.com_license
                         else NonCommercialSuperPoint(**self.extractor_conf).eval().to(device))
             matcher = LightGlue(**self.matcher_conf).eval().to(device)
