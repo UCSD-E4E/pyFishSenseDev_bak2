@@ -14,9 +14,9 @@ class ImageMatcher():
         self.image0 = template
         self.feats0 = None
         self.com_license=com_license
-        self.preprocess_conf=processing_conf['preprocess']
-        self.matcher_conf=processing_conf['matcher']
-        self.extractor_conf=processing_conf['extractor']
+        self.preprocess_conf=processing_conf['preprocess'] if 'preprocess' in processing_conf else {}
+        self.matcher_conf=processing_conf['matcher'] if 'matcher' in processing_conf else {}
+        self.extractor_conf=processing_conf['extractor'] if 'extractor' in processing_conf else {}
     def __call__(self, image1: torch.Tensor):
         """Given a calibration image, return its matches with the template.
         Input:

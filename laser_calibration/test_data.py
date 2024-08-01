@@ -129,7 +129,7 @@ def main():
     matches_list = []
     names_list = []
     lines = ["==== Images Processed ====\n"]
-    slate.load()
+    slate.load() # we have to load our image
     matcher = ImageMatcher(slate.image, com_license=com_license, processing_conf=processing_conf)
     for c in cals:
         if slate.name == c.name: continue # ensure we're not processing a slate
@@ -174,20 +174,10 @@ def main():
                    f"Found a total of {matches_count} matches.\n\n",
                    f"There are {less_six_matches_count} images with less than 6 matches.\n\n"]
     if not com_license: recap_lines.insert(0, "WARNING: NON-COMMERCIAL USE OF SUPERPOINT!\n\n")
-    if len(processing_conf['preprocess']) > 0:
-        recap_lines.append("Preprocessing Config:\n")
-        for k, i in processing_conf['preprocess'].items():
-            recap_lines.append(f"    {k} = {i}\n")
-        recap_lines.append("\n")
-    if len(processing_conf['extractor']) > 0:
-        recap_lines.append("Extractor Config:\n")
-        for k, i in processing_conf['extractor'].items():
-            recap_lines.append(f"    {k} = {i}\n")
-        recap_lines.append("\n")
-    if len(processing_conf['matcher']) > 0:
-        recap_lines.append("Matcher Config:\n")
-        for k, i in processing_conf['matcher'].items():
-            recap_lines.append(f"    {k} = {i}\n")
+    for k1,_ in processing_conf.items():
+        recap_lines.append(f"{k1.capitalize()} Config:\n")
+        for k2, i2 in processing_conf[k1].items():
+            recap_lines.append(f"    {k2} = {i2}\n")
         recap_lines.append("\n")
     f = open(results_dir + '/results.txt', 'w')
     f.writelines(recap_lines + lines)
