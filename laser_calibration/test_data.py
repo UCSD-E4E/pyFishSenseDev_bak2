@@ -20,7 +20,7 @@ import cv2
 import matplotlib.pyplot as plt
 import glob
 
-from match_images import ImageMatcher
+from image_matcher import ImageMatcher
 
 from utils import load_image
 import viz2d
@@ -72,8 +72,8 @@ def visualize_matches(image0: Image, m_kpts0, image1: Image, m_kpts1, output_pat
     if show_fig: plt.show()
     plt.close()
 
-# Given a path to the data and an optional matching string, return a list of image objects
 def load_images(data_path, matching_string=''):
+    """Given a path to the data and an optional matching string, return a list of image objects"""
     extensions = ['.PNG', '.png', '.JPG', '.jpg']
     path = f'{data_path}/{matching_string}' if matching_string != '' else f'{data_path}/*'
     glob_list = [glob.glob(path + ext) for ext in extensions]
@@ -81,10 +81,6 @@ def load_images(data_path, matching_string=''):
     glob_list.sort()
     imgs = [Image(img) for img in glob_list]
     return imgs
-
-# Given an image path and a scale, resize the image and save it
-def resize_and_save(img_path, scale):
-    pass
 
 def load_config(path):
     with open(path, 'r') as f:
@@ -143,7 +139,7 @@ def main():
         processed_count += 1
 
         c.load() # load our image
-        slate_matches, cal_matches = matcher.process(c.image)
+        slate_matches, cal_matches = matcher(c.image)
         matches_list.append([[s,c] for s,c in zip(slate_matches, cal_matches)])
         names_list.append(c.name)
 
