@@ -1,8 +1,9 @@
+# Optional config so you can tune the parameters. Default values are commented out.
 preprocess:
   gamma: 2.0 # 2.0
   sharpness: null # null
   scale: 1.6 # 1.6
-# extractor:
-#   max_num_keypoints: null # null
+extractor:
+  max_num_keypoints: null # null
 matcher:
   filter_threshold: 0.5 # 0.5

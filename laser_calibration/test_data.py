@@ -6,8 +6,6 @@
 # A slate image must be in the specified data directory. Results will be saved in the appropriate subdirectory.
 # WARNING: Ensure the correct use of licensing.
 
-# TODO: Save feature and match results to a .csv file.
-
 import sys
 import os
 import argparse
