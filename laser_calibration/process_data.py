@@ -1,20 +1,21 @@
-# Script to test commercial/non-commercial implementations of SuperPoint+LightGlue.
-# Usage: python3 test_data.py [-n] [-p] <data_dir>
-# [-n]: Use this if you want to use the non-commercial version of SuperPoint.
-# [-p]: Use this to disable saving results in a path name based on preprocessing configurations.
-# [-i]: Use this to disable plot results.
-# A slate image must be in the specified data directory. Results will be saved in the appropriate subdirectory.
-# WARNING: Ensure the correct use of licensing.
-
+"""
+Script to test commercial/non-commercial implementations of SuperPoint+LightGlue.
+Place your calibration images in one directory along with the appropriate slate image.
+The script will produce matching keypoint pairs.
+Usage: python3 test_data.py [-n] [-p] [-i] <data_dir>
+[-n]: Use this if you want to use the non-commercial version of SuperPoint.
+[-p]: Use this to disable saving results in a path name based on preprocessing configurations.
+[-i]: Use this to disable plot results.
+A slate image must be in the specified data directory. Results will be saved in the appropriate subdirectory.
+WARNING: Ensure the correct use of licensing.
+"""
 import sys
 import os
 import argparse
 import yaml
 import gc
 import pandas as pd
-import torch
 
-import cv2
 import matplotlib.pyplot as plt
 import glob
 
@@ -72,9 +73,11 @@ def visualize_matches(image0: Image, m_kpts0, image1: Image, m_kpts1, output_pat
 
 def load_images(data_path, matching_string=''):
     """Given a path to the data and an optional matching string, return a list of image objects"""
-    extensions = ['.PNG', '.png', '.JPG', '.jpg']
+    def_extensions = ['PNG', 'png', 'JPG', 'jpg']
+    data_conf = load_config('test_config.yml')['data']
+    extensions = data_conf['image_extensions'] if 'image_extensions' in data_conf else def_extensions
     path = f'{data_path}/{matching_string}' if matching_string != '' else f'{data_path}/*'
-    glob_list = [glob.glob(path + ext) for ext in extensions]
+    glob_list = [glob.glob(path + '.' + ext) for ext in extensions]
     glob_list = sum(glob_list, [])
     glob_list.sort()
     imgs = [Image(img) for img in glob_list]

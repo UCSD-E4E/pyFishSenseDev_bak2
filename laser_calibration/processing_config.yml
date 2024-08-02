@@ -1,4 +1,4 @@
-# Optional config so you can tune the parameters. Default values are commented out.
+# Optional config that can be passed to a matcher object.
 preprocess:
   gamma: 2.0 # 2.0
   sharpness: null # null

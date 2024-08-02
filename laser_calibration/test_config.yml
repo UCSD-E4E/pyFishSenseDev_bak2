@@ -1,2 +1,8 @@
+# Config for process_data.py
 data:
   slate_path_must_include: 'slate*' # you can use wildcards. e.g. 'slate*' -> 'slatex01.jpg'
+  image_extensions:
+    - PNG
+    - png
+    - JPG
+    - jpg

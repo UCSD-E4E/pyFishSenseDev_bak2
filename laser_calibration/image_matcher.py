@@ -1,5 +1,8 @@
-# Inference use of SuperPoint+LightGlue
-
+"""
+Inference use of SuperPoint+LightGlue
+Usage: Look at examples from example_inference.ipynb and process_data.py
+Due to licensing issues, make sure you are using the correct version of SuperPoint.
+"""
 import torch
 
 from models.lightglue import LightGlue
