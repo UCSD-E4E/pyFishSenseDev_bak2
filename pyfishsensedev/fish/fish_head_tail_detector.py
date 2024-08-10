@@ -2,10 +2,94 @@ from pathlib import Path
 from typing import Tuple
 
 import matplotlib.pyplot as plt
+from shapely.plotting import plot_polygon, plot_line, plot_points
 import numpy as np
-
+import cv2
+import shapely
+from shapely import ops
 
 class FishHeadTailDetector:
+    def classify_coords(self, mask: np.ndarray, coords: Tuple[np.ndarray, np.ndarray]) -> Tuple[np.ndarray, np.ndarray]:
+        """Given a fish mask and left/right coords, this function will classify each coord as head/tail.
+            Input:
+                mask: np.ndarray
+                coords: Tuple[left_coord, right_coord]
+            Output:
+                head_coord = np.ndarray
+                tail_coord = np.ndarray
+        """
+        left_coord, right_coord = coords
+
+        # find the perimeter of the mask
+        contours, _ = cv2.findContours(mask.astype(np.uint8), cv2.RETR_TREE, cv2.CHAIN_APPROX_SIMPLE)
+        perimeter = contours[0].reshape(-1, 2)
+
+        # find the line perpendicular to the line connecting the points
+        ab = shapely.geometry.LineString(coords)
+        ab_left = ab.parallel_offset(abs(perimeter[:,1].min() - ab.centroid.y), 'left')
+        ab_right = ab.parallel_offset(abs(perimeter[:,1].max() - ab.centroid.y), 'right')
+        ab_perp = shapely.geometry.LineString([ab_left.centroid, ab_right.centroid])
+
+        # let's recalculate ab so that it's long enough to slice the polygon horizontally
+        ab_perp_left = ab_perp.parallel_offset(abs(perimeter[:,0].min() - ab_perp.centroid.x), 'left')
+        ab_perp_right = ab_perp.parallel_offset(abs(perimeter[:,0].max() - ab_perp.centroid.x), 'right')
+        ab = shapely.geometry.LineString([ab_perp_left.centroid, ab_perp_right.centroid])
+
+        # create a polygon
+        polygon = shapely.geometry.Polygon(perimeter)
+
+        # simplify the polygon
+        #polygon = polygon.simplify(tolerance=3.5) # 2.5
+
+        # split the polygon by the perpendicular line
+        halves = ops.split(polygon, ab_perp).geoms
+
+        # split those halfs by ab to get 4 sections
+        quads = []
+        for half in halves:
+            for quad in ops.split(half, ab).geoms: quads.append(quad)
+
+        # find the nearest points from each centroid to the boundary
+        neareset_points = []
+        nearest_distances = []
+        for quad in quads:
+            _, point = ops.nearest_points(quad.centroid, polygon.boundary)
+            neareset_points.append(point)
+            nearest_distances.append(abs(shapely.distance(quad.centroid, point)))
+
+        # determine which left/right coordinate is closest to the chosen centroid
+        left_coord = shapely.Point(left_coord)
+        right_coord = shapely.Point(right_coord)
+        idx = nearest_distances.index(min(nearest_distances))
+        if abs(shapely.distance(quads[idx].centroid, left_coord)) < abs(shapely.distance(quads[idx].centroid, right_coord)):
+            tail_coord = left_coord
+            head_coord = right_coord
+        else:
+            tail_coord = right_coord
+            head_coord = left_coord
+
+        # plt.imshow(mask)
+        # plot_polygon(quads[0], color='#ff0000', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[0].centroid), color="#ff0000") # red
+        # plot_line(shapely.geometry.LineString([quads[0].centroid, neareset_points[0]]))
+
+        # plot_polygon(quads[1], color='#0000ff', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[1].centroid), color="#0000ff") # blue
+        # plot_line(shapely.geometry.LineString([quads[1].centroid, neareset_points[1]]))
+
+        # plot_polygon(quads[2], color='#008000', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[2].centroid), color="#008000") # green
+        # plot_line(shapely.geometry.LineString([quads[2].centroid, neareset_points[2]]))
+
+        # plot_polygon(quads[3], color='#FFA500', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[3].centroid), color="#FFA500") # orange
+        # plot_line(shapely.geometry.LineString([quads[3].centroid, neareset_points[3]]))
+
+        # plt.show()
+
+        return (head_coord.x, head_coord.y), (tail_coord.x, tail_coord.y)
+
+
     def find_head_tail(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
         # Find all the nonzero points.  These are the mask.
         y, x = mask.nonzero()
@@ -25,7 +109,7 @@ class FishHeadTailDetector:
 
         # PCA
         coords = np.vstack([x, y])
-        cov = np.cov(coords)
+        cov = np.cov(coords) # covariance matrix
         evals, evecs = np.linalg.eig(cov)
 
         # Choose the largest eigenvalue
@@ -85,14 +169,14 @@ if __name__ == "__main__":
 
     raw_processor = RawProcessor()
     raw_processor_dark = RawProcessor(enable_histogram_equalization=False)
-    image_rectifier = ImageRectifier(Path("./data/lens-calibration.pkg"))
+    image_rectifier = ImageRectifier(Path(".../data/calibration/fsl-01d-lens-raw.pkg"))
     laser_detector = LaserDetector(
-        Path("./data/models/laser_detection.pth"),
-        Path("./data/lens-calibration.pkg"),
-        Path("./data/laser-calibration.pkg"),
+        Path("../laser/models/laser_detection.pth"),
+        Path(".../data/calibration/fsl-01d-lens-raw.pkg"),
+        Path(".../data/calibration/fsl-01d-laser.pkg"),
     )
 
-    img = raw_processor.load_and_process(Path("./data/P8030201.ORF"))
+    img = raw_processor.load_and_process(Path(".../data/P8030201.ORF"))
     img_dark = raw_processor_dark.load_and_process(Path("./data/P8030201.ORF"))
     img = image_rectifier.rectify(img)
     img_dark = image_rectifier.rectify(img_dark)
