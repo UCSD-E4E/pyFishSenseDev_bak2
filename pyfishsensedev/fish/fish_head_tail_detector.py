@@ -26,14 +26,20 @@ class FishHeadTailDetector:
 
         # find the line perpendicular to the line connecting the points
         ab = shapely.geometry.LineString(coords)
-        ab_left = ab.parallel_offset(abs(perimeter[:,1].min() - ab.centroid.y)+10, 'left')
-        ab_right = ab.parallel_offset(abs(perimeter[:,1].max() - ab.centroid.y)+10, 'right')
+        vert_min = abs(perimeter[:,1].min() - ab.centroid.y)
+        vert_max = abs(perimeter[:,1].max() - ab.centroid.y)
+        vert_len = vert_min if vert_min > vert_max else vert_max
+        ab_left = ab.parallel_offset(vert_len*1.1, 'left')
+        ab_right = ab.parallel_offset(vert_len*1.1, 'right')
         ab_perp = shapely.geometry.LineString([ab_left.centroid, ab_right.centroid])
 
         # let's recalculate ab so that it's long enough to slice the polygon horizontally
-        ab_perp_left = ab_perp.parallel_offset(abs(perimeter[:,0].min() - ab_perp.centroid.x)+10, 'left')
-        ab_perp_right = ab_perp.parallel_offset(abs(perimeter[:,0].max() - ab_perp.centroid.x)+10, 'right')
-        ab = shapely.geometry.LineString([ab_perp_left.centroid, ab_perp_right.centroid])
+        hor_min = abs(perimeter[:,0].min() - ab_perp.centroid.x)
+        hor_max = abs(perimeter[:,0].max() - ab_perp.centroid.x)
+        hor_len = hor_min if hor_min > hor_max else hor_max
+        ab_perp_left = ab_perp.parallel_offset(hor_len*1.1, 'left')
+        ab_perp_right = ab_perp.parallel_offset(hor_len*1.1, 'right')
+        ab_corrected = shapely.geometry.LineString([ab_perp_left.centroid, ab_perp_right.centroid])
 
         # create a polygon
         polygon = shapely.geometry.Polygon(perimeter)
@@ -47,7 +53,7 @@ class FishHeadTailDetector:
         # split those halfs by ab to get 4 sections
         quads = []
         for half in halves:
-            for quad in ops.split(half, ab).geoms: quads.append(quad)
+            for quad in ops.split(half, ab_corrected).geoms: quads.append(quad)
 
         # find the nearest points from each centroid to the boundary
         neareset_points = []
@@ -68,24 +74,24 @@ class FishHeadTailDetector:
             tail_coord = right_coord
             head_coord = left_coord
 
-        # plt.imshow(mask)
-        # plot_polygon(quads[0], color='#ff0000', add_points=False)
-        # plot_points(shapely.geometry.Point(quads[0].centroid), color="#ff0000") # red
-        # plot_line(shapely.geometry.LineString([quads[0].centroid, neareset_points[0]]))
+        plt.imshow(mask)
+        plot_polygon(quads[0], color='#ff0000', add_points=False)
+        plot_points(shapely.geometry.Point(quads[0].centroid), color="#ff0000") # red
+        plot_line(shapely.geometry.LineString([quads[0].centroid, neareset_points[0]]))
 
-        # plot_polygon(quads[1], color='#0000ff', add_points=False)
-        # plot_points(shapely.geometry.Point(quads[1].centroid), color="#0000ff") # blue
-        # plot_line(shapely.geometry.LineString([quads[1].centroid, neareset_points[1]]))
+        plot_polygon(quads[1], color='#0000ff', add_points=False)
+        plot_points(shapely.geometry.Point(quads[1].centroid), color="#0000ff") # blue
+        plot_line(shapely.geometry.LineString([quads[1].centroid, neareset_points[1]]))
 
-        # plot_polygon(quads[2], color='#008000', add_points=False)
-        # plot_points(shapely.geometry.Point(quads[2].centroid), color="#008000") # green
-        # plot_line(shapely.geometry.LineString([quads[2].centroid, neareset_points[2]]))
+        plot_polygon(quads[2], color='#008000', add_points=False)
+        plot_points(shapely.geometry.Point(quads[2].centroid), color="#008000") # green
+        plot_line(shapely.geometry.LineString([quads[2].centroid, neareset_points[2]]))
 
-        # plot_polygon(quads[3], color='#FFA500', add_points=False)
-        # plot_points(shapely.geometry.Point(quads[3].centroid), color="#FFA500") # orange
-        # plot_line(shapely.geometry.LineString([quads[3].centroid, neareset_points[3]]))
+        plot_polygon(quads[3], color='#FFA500', add_points=False)
+        plot_points(shapely.geometry.Point(quads[3].centroid), color="#FFA500") # orange
+        plot_line(shapely.geometry.LineString([quads[3].centroid, neareset_points[3]]))
 
-        # plt.show()
+        plt.show()
 
         return (head_coord.x, head_coord.y), (tail_coord.x, tail_coord.y)
 
