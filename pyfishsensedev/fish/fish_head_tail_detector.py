@@ -26,13 +26,13 @@ class FishHeadTailDetector:
 
         # find the line perpendicular to the line connecting the points
         ab = shapely.geometry.LineString(coords)
-        ab_left = ab.parallel_offset(abs(perimeter[:,1].min() - ab.centroid.y), 'left')
-        ab_right = ab.parallel_offset(abs(perimeter[:,1].max() - ab.centroid.y), 'right')
+        ab_left = ab.parallel_offset(abs(perimeter[:,1].min() - ab.centroid.y)+10, 'left')
+        ab_right = ab.parallel_offset(abs(perimeter[:,1].max() - ab.centroid.y)+10, 'right')
         ab_perp = shapely.geometry.LineString([ab_left.centroid, ab_right.centroid])
 
         # let's recalculate ab so that it's long enough to slice the polygon horizontally
-        ab_perp_left = ab_perp.parallel_offset(abs(perimeter[:,0].min() - ab_perp.centroid.x), 'left')
-        ab_perp_right = ab_perp.parallel_offset(abs(perimeter[:,0].max() - ab_perp.centroid.x), 'right')
+        ab_perp_left = ab_perp.parallel_offset(abs(perimeter[:,0].min() - ab_perp.centroid.x)+10, 'left')
+        ab_perp_right = ab_perp.parallel_offset(abs(perimeter[:,0].max() - ab_perp.centroid.x)+10, 'right')
         ab = shapely.geometry.LineString([ab_perp_left.centroid, ab_perp_right.centroid])
 
         # create a polygon
