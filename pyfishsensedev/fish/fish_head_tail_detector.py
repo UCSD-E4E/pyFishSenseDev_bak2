@@ -74,24 +74,24 @@ class FishHeadTailDetector:
             tail_coord = right_coord
             head_coord = left_coord
 
-        plt.imshow(mask)
-        plot_polygon(quads[0], color='#ff0000', add_points=False)
-        plot_points(shapely.geometry.Point(quads[0].centroid), color="#ff0000") # red
-        plot_line(shapely.geometry.LineString([quads[0].centroid, neareset_points[0]]))
+        # plt.imshow(mask)
+        # plot_polygon(quads[0], color='#ff0000', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[0].centroid), color="#ff0000") # red
+        # plot_line(shapely.geometry.LineString([quads[0].centroid, neareset_points[0]]))
 
-        plot_polygon(quads[1], color='#0000ff', add_points=False)
-        plot_points(shapely.geometry.Point(quads[1].centroid), color="#0000ff") # blue
-        plot_line(shapely.geometry.LineString([quads[1].centroid, neareset_points[1]]))
+        # plot_polygon(quads[1], color='#0000ff', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[1].centroid), color="#0000ff") # blue
+        # plot_line(shapely.geometry.LineString([quads[1].centroid, neareset_points[1]]))
 
-        plot_polygon(quads[2], color='#008000', add_points=False)
-        plot_points(shapely.geometry.Point(quads[2].centroid), color="#008000") # green
-        plot_line(shapely.geometry.LineString([quads[2].centroid, neareset_points[2]]))
+        # plot_polygon(quads[2], color='#008000', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[2].centroid), color="#008000") # green
+        # plot_line(shapely.geometry.LineString([quads[2].centroid, neareset_points[2]]))
 
-        plot_polygon(quads[3], color='#FFA500', add_points=False)
-        plot_points(shapely.geometry.Point(quads[3].centroid), color="#FFA500") # orange
-        plot_line(shapely.geometry.LineString([quads[3].centroid, neareset_points[3]]))
+        # plot_polygon(quads[3], color='#FFA500', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[3].centroid), color="#FFA500") # orange
+        # plot_line(shapely.geometry.LineString([quads[3].centroid, neareset_points[3]]))
 
-        plt.show()
+        # plt.show()
 
         return (head_coord.x, head_coord.y), (tail_coord.x, tail_coord.y)
 
