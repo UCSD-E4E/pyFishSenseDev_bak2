@@ -14,13 +14,12 @@ class FishHeadTailDetector:
             Input:
                 mask: np.ndarray
                 coords: Tuple[left_coord, right_coord]
-            Output:
-                coords (dict):
-                    'head': np.ndarray
-                        [x, y]
-                    'tail': np.ndarray
-                        [x, y]
-                confidence: float
+            Output (dict):
+                'head': np.ndarray
+                    [x, y]
+                'tail': np.ndarray
+                    [x, y]
+                'confidence': float
         """
         left_coord, right_coord = coords
 
