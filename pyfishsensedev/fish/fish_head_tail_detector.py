@@ -101,7 +101,7 @@ class FishHeadTailDetector:
         head_coord = [head_coord.x, head_coord.y]
         tail_coord = [tail_coord.x, tail_coord.y]
 
-        return {'head': head_coord, 'tail': tail_coord, 'confidence': 0.9}
+        return {'head': np.asarray(head_coord), 'tail': np.asarray(tail_coord), 'confidence': 0.9}
 
 
     def find_head_tail(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
