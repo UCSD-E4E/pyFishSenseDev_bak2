@@ -32,16 +32,16 @@ class FishHeadTailDetector:
         vert_min = abs(perimeter[:,1].min() - ab.centroid.y)
         vert_max = abs(perimeter[:,1].max() - ab.centroid.y)
         vert_len = vert_min if vert_min > vert_max else vert_max
-        ab_left = ab.parallel_offset(vert_len*1.1, 'left')
-        ab_right = ab.parallel_offset(vert_len*1.1, 'right')
+        ab_left = ab.parallel_offset(vert_len*1.5, 'left')
+        ab_right = ab.parallel_offset(vert_len*1.5, 'right')
         ab_perp = shapely.geometry.LineString([ab_left.centroid, ab_right.centroid])
 
         # let's recalculate ab so that it's long enough to slice the polygon horizontally
         hor_min = abs(perimeter[:,0].min() - ab_perp.centroid.x)
         hor_max = abs(perimeter[:,0].max() - ab_perp.centroid.x)
         hor_len = hor_min if hor_min > hor_max else hor_max
-        ab_perp_left = ab_perp.parallel_offset(hor_len*1.1, 'left')
-        ab_perp_right = ab_perp.parallel_offset(hor_len*1.1, 'right')
+        ab_perp_left = ab_perp.parallel_offset(hor_len*1.5, 'left')
+        ab_perp_right = ab_perp.parallel_offset(hor_len*1.5, 'right')
         ab_corrected = shapely.geometry.LineString([ab_perp_left.centroid, ab_perp_right.centroid])
 
         # create a polygon
@@ -77,31 +77,40 @@ class FishHeadTailDetector:
             tail_coord = right_coord
             head_coord = left_coord
 
-        # Visualize the quadrants
-        plt.imshow(mask)
-        plot_polygon(quads[0], color='#ff0000', add_points=False)
-        plot_points(shapely.geometry.Point(quads[0].centroid), color="#ff0000") # red
-        plot_line(shapely.geometry.LineString([quads[0].centroid, neareset_points[0]]))
+        # calculate the confidence score
+        h1_quad = min([nearest_distances[0], nearest_distances[1]])
+        h2_quad = min([nearest_distances[2], nearest_distances[3]])
+        max_quad = max([h1_quad, h2_quad])
+        min_quad = min([h1_quad, h2_quad])
+        confidence = float((max_quad - min_quad) / max_quad / 2.0 + 0.5)
+        confidence = int(confidence * 100) / 100
 
-        plot_polygon(quads[1], color='#0000ff', add_points=False)
-        plot_points(shapely.geometry.Point(quads[1].centroid), color="#0000ff") # blue
-        plot_line(shapely.geometry.LineString([quads[1].centroid, neareset_points[1]]))
+        #Visualize the quadrants
+        # plt.imshow(mask)
+        # plot_polygon(quads[0], color='#ff0000', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[0].centroid), color="#ff0000") # red
+        # plot_line(shapely.geometry.LineString([quads[0].centroid, neareset_points[0]]))
 
-        plot_polygon(quads[2], color='#008000', add_points=False)
-        plot_points(shapely.geometry.Point(quads[2].centroid), color="#008000") # green
-        plot_line(shapely.geometry.LineString([quads[2].centroid, neareset_points[2]]))
+        # plot_polygon(quads[1], color='#0000ff', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[1].centroid), color="#0000ff") # blue
+        # plot_line(shapely.geometry.LineString([quads[1].centroid, neareset_points[1]]))
 
-        plot_polygon(quads[3], color='#FFA500', add_points=False)
-        plot_points(shapely.geometry.Point(quads[3].centroid), color="#FFA500") # orange
-        plot_line(shapely.geometry.LineString([quads[3].centroid, neareset_points[3]]))
+        # plot_polygon(quads[2], color='#008000', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[2].centroid), color="#008000") # green
+        # plot_line(shapely.geometry.LineString([quads[2].centroid, neareset_points[2]]))
 
-        plt.show()
+        # plot_polygon(quads[3], color='#FFA500', add_points=False)
+        # plot_points(shapely.geometry.Point(quads[3].centroid), color="#FFA500") # orange
+        # plot_line(shapely.geometry.LineString([quads[3].centroid, neareset_points[3]]))
+
+        # plt.show()
+        # plt.close()
 
         # Extract x and y coordinates
         head_coord = [head_coord.x, head_coord.y]
         tail_coord = [tail_coord.x, tail_coord.y]
 
-        return {'head': np.asarray(head_coord), 'tail': np.asarray(tail_coord), 'confidence': 0.9}
+        return {'head': np.asarray(head_coord), 'tail': np.asarray(tail_coord), 'confidence': confidence}
 
 
     def find_head_tail(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
