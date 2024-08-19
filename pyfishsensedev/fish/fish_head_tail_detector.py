@@ -7,20 +7,10 @@ import numpy as np
 import cv2
 import shapely
 from shapely import ops
+from sklearn.decomposition import PCA
 
 class FishHeadTailDetector:
     def classify_coords(self, mask: np.ndarray, coords: Tuple[np.ndarray, np.ndarray]) -> Dict[str, np.ndarray]:
-        """Given a fish mask and left/right coords, this function will classify each coord as head/tail.
-            Input:
-                mask: np.ndarray
-                coords: Tuple[left_coord, right_coord]
-            Output (dict):
-                'head': np.ndarray
-                    [x, y]
-                'tail': np.ndarray
-                    [x, y]
-                'confidence': float
-        """
         left_coord, right_coord = coords
 
         # find the perimeter of the mask
@@ -36,81 +26,68 @@ class FishHeadTailDetector:
         ab_right = ab.parallel_offset(vert_len*1.5, 'right')
         ab_perp = shapely.geometry.LineString([ab_left.centroid, ab_right.centroid])
 
-        # let's recalculate ab so that it's long enough to slice the polygon horizontally
-        hor_min = abs(perimeter[:,0].min() - ab_perp.centroid.x)
-        hor_max = abs(perimeter[:,0].max() - ab_perp.centroid.x)
-        hor_len = hor_min if hor_min > hor_max else hor_max
-        ab_perp_left = ab_perp.parallel_offset(hor_len*1.5, 'left')
-        ab_perp_right = ab_perp.parallel_offset(hor_len*1.5, 'right')
-        ab_corrected = shapely.geometry.LineString([ab_perp_left.centroid, ab_perp_right.centroid])
-
         # create a polygon
         polygon = shapely.geometry.Polygon(perimeter)
 
-        # simplify the polygon
-        #polygon = polygon.simplify(tolerance=3.5) # 2.5
-
         # split the polygon by the perpendicular line
         halves = ops.split(polygon, ab_perp).geoms
+        if len(halves) > 2:
+            halves = sorted(halves, key=lambda p: p.area, reverse=True)[:2]
 
-        # split those halfs by ab to get 4 sections
-        quads = []
-        for half in halves:
-            for quad in ops.split(half, ab_corrected).geoms: quads.append(quad)
+        # get the convex versions
+        halves_convex = [halves[0].convex_hull, halves[1].convex_hull]
 
-        # find the nearest points from each centroid to the boundary
-        neareset_points = []
-        nearest_distances = []
-        for quad in quads:
-            _, point = ops.nearest_points(quad.centroid, polygon.boundary)
-            neareset_points.append(point)
-            nearest_distances.append(abs(shapely.distance(quad.centroid, point)))
+        # get the differences
+        halves_difference = [shapely.difference(halves_convex[0], halves[0]), shapely.difference(halves_convex[1], halves[1])]
 
-        # determine which left/right coordinate is closest to the chosen centroid
-        left_coord = shapely.Point(left_coord)
-        right_coord = shapely.Point(right_coord)
-        idx = nearest_distances.index(min(nearest_distances))
-        if abs(shapely.distance(quads[idx].centroid, left_coord)) < abs(shapely.distance(quads[idx].centroid, right_coord)):
-            tail_coord = left_coord
-            head_coord = right_coord
-        else:
-            tail_coord = right_coord
+        # compare the areas
+        half_areas = [halves_difference[0].area], [halves_difference[1].area]
+        tail_poly = halves[half_areas.index(max(half_areas))]
+        head_poly = halves[half_areas.index(min(half_areas))]
+
+        # determine which coord is head/tail
+        if abs(shapely.distance(shapely.Point(left_coord), head_poly)) < abs(shapely.distance(shapely.Point(left_coord), tail_poly)):
             head_coord = left_coord
+            tail_coord = right_coord
+        else:
+            head_coord = right_coord
+            tail_coord = left_coord
 
-        # calculate the confidence score
-        h1_quad = min([nearest_distances[0], nearest_distances[1]])
-        h2_quad = min([nearest_distances[2], nearest_distances[3]])
-        max_quad = max([h1_quad, h2_quad])
-        min_quad = min([h1_quad, h2_quad])
-        confidence = float((max_quad - min_quad) / max_quad / 2.0 + 0.5)
+        # compute the confidence score
+        confidence = float((max(half_areas)[0] - min(half_areas)[0]) / max(half_areas)[0] / 2.0 + 0.5)
         confidence = int(confidence * 100) / 100
 
-        #Visualize the quadrants
-        # plt.imshow(mask)
-        # plot_polygon(quads[0], color='#ff0000', add_points=False)
-        # plot_points(shapely.geometry.Point(quads[0].centroid), color="#ff0000") # red
-        # plot_line(shapely.geometry.LineString([quads[0].centroid, neareset_points[0]]))
+        # plot_polygon(halves_difference[0], add_points=False, color="#ff0000", facecolor='#ff0000')
+        # plot_polygon(halves_difference[1], add_points=False, color='#0000ff', facecolor='#0000ff')
 
-        # plot_polygon(quads[1], color='#0000ff', add_points=False)
-        # plot_points(shapely.geometry.Point(quads[1].centroid), color="#0000ff") # blue
-        # plot_line(shapely.geometry.LineString([quads[1].centroid, neareset_points[1]]))
+        # START ADJUST COORDINATES
 
-        # plot_polygon(quads[2], color='#008000', add_points=False)
-        # plot_points(shapely.geometry.Point(quads[2].centroid), color="#008000") # green
-        # plot_line(shapely.geometry.LineString([quads[2].centroid, neareset_points[2]]))
+        # make head_polygon convex
+        head_poly_convex = head_poly.convex_hull
 
-        # plot_polygon(quads[3], color='#FFA500', add_points=False)
-        # plot_points(shapely.geometry.Point(quads[3].centroid), color="#FFA500") # orange
-        # plot_line(shapely.geometry.LineString([quads[3].centroid, neareset_points[3]]))
+        # find the furthest points from ab_perp.centroid
+        point1 = head_coord
+        point2 = head_coord
+        largest_dist1 = largest_dist2 = -1
+        for p in head_poly_convex.boundary.coords:
+            dist = abs(shapely.distance(shapely.Point(p), ab_perp.centroid))
+            if dist > largest_dist1:
+                largest_dist1 = dist
+                point1 = p
+            elif dist > largest_dist2:
+                largest_dist2 = dist
+                point2 = p
+        #head_coord_corrected = shapely.LineString([shapely.Point(point1), shapely.Point(point2)]).centroid
+        head_coord_corrected = shapely.Point(point1)
 
-        # plt.show()
-        # plt.close()
-
-        # Extract x and y coordinates
-        head_coord = [head_coord.x, head_coord.y]
-        tail_coord = [tail_coord.x, tail_coord.y]
-
-        return {'head': np.asarray(head_coord), 'tail': np.asarray(tail_coord), 'confidence': confidence}
+        return {
+                'head': np.asarray(head_coord),
+                'tail': np.asarray(tail_coord),
+                'confidence': confidence,
+                'head_poly': head_poly,
+                'tail_poly': tail_poly,
+                'head_corrected': np.asarray([head_coord_corrected.x, head_coord_corrected.y])
+                }
 
 
     def find_head_tail(self, mask: np.ndarray) -> Tuple[np.ndarray, np.ndarray, float]:
