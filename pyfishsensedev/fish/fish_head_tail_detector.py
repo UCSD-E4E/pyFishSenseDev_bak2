@@ -62,23 +62,75 @@ class FishHeadTailDetector:
 
         # START ADJUST COORDINATES
 
-        # make head_polygon convex
-        head_poly_convex = head_poly.convex_hull
+        # get endpoints of ab_perp
+        ab_perp_end1 = ab_left.centroid
+        ab_perp_end2 = ab_right.centroid
+        #plot_line(ab)
+        #plot_line(ab_perp)
 
-        # find the furthest points from ab_perp.centroid
-        point1 = head_coord
-        point2 = head_coord
-        largest_dist1 = largest_dist2 = -1
-        for p in head_poly_convex.boundary.coords:
-            dist = abs(shapely.distance(shapely.Point(p), ab_perp.centroid))
-            if dist > largest_dist1:
-                largest_dist1 = dist
-                point1 = p
-            elif dist > largest_dist2:
-                largest_dist2 = dist
-                point2 = p
-        #head_coord_corrected = shapely.LineString([shapely.Point(point1), shapely.Point(point2)]).centroid
-        head_coord_corrected = shapely.Point(point1)
+        # draw two lines parallel to ab_perp a little bit aways from the original endpoints
+        hor_min = abs(perimeter[:,0].min() - ab_perp.centroid.x)
+        hor_max = abs(perimeter[:,0].max() - ab_perp.centroid.x)
+        hor_len = hor_min if hor_min > hor_max else hor_max
+        nose_line1 = ab_perp.parallel_offset(hor_len*2.0, 'right') # hor_len*2.0
+        nose_line2 = ab_perp.parallel_offset(hor_len*2.0, 'left') # hor_len*2.0
+        #plot_line(nose_line2)
+
+        # choose the line near the head and get the centroid 
+        if shapely.distance(nose_line1.centroid, shapely.Point(head_coord)) < shapely.distance(nose_line1.centroid, shapely.Point(tail_coord)):
+            nose_point = nose_line1.centroid
+        else:
+            nose_point = nose_line2.centroid
+        #plot_points(nose_point)
+
+        # form a triangle polygon
+        triangle_poly = shapely.geometry.Polygon([nose_point, ab_perp_end1, ab_perp_end2])
+        #plot_polygon(triangle_poly, add_points=False, color='#000fff')
+
+        # get the perpendicular line of ab from the headpoint
+        half_len = shapely.distance(ab.centroid, shapely.Point(head_coord).centroid)
+        nose_line_close1 = ab_perp.parallel_offset(half_len, 'right')
+        nose_line_close2 = ab_perp.parallel_offset(half_len, 'left')
+
+        # again choose the right line
+        if shapely.distance(nose_line_close1.centroid, shapely.Point(head_coord)) < shapely.distance(nose_line_close1.centroid, shapely.Point(tail_coord)):
+            nose_point_close = nose_line_close1
+        else:
+            nose_point_close = nose_line_close2
+        #plot_line(nose_point_close)
+
+        # slice the triangle by that line
+        triangle_sliced = ops.split(triangle_poly, nose_point_close).geoms
+        # polygon closest to ab.centroid is not the one we want
+        if shapely.distance(triangle_sliced[0], ab.centroid) < shapely.distance(triangle_sliced[1], ab.centroid):
+            triangle_sliced = triangle_sliced[1]
+        else:
+            triangle_sliced = triangle_sliced[0]
+        #plot_polygon(triangle_sliced, add_points=False, color='#000fff', facecolor='#000fff')
+
+        # get the diff
+        triangle_sliced_diff = shapely.difference(triangle_sliced, polygon) # should we even get the diff?
+        #plot_polygon(triangle_sliced_diff, add_points=False, color='#000fff', facecolor='#000fff')
+        #plot_points(triangle_sliced_diff.centroid)
+
+        # find the closest perimeter point to the centroid
+        try:
+            _, head_corrected = ops.nearest_points(triangle_sliced_diff.centroid, shapely.intersection(head_poly, triangle_sliced))
+            _, head_corrected2 = ops.nearest_points(nose_point, shapely.intersection(head_poly, triangle_sliced))
+            plot_points(head_corrected2)
+        except:
+            head_coord = shapely.geometry.Point(head_coord)
+        #plot_line(shapely.geometry.LineString([head_corrected, triangle_sliced_diff.centroid]), add_points=False)
+
+        #plot_points(shapely.geometry.Point(head_coord), color='#FFA500')
+        #plot_points(shapely.geometry.Point(tail_coord), color='#FFA500')
+        #plot_line(ab_perp, color='#FFA500', add_points=False)
+        # plot_polygon(head_poly, add_points=False, color='#FFAD00', facecolor='#FFCD00')
+        # plot_polygon(tail_poly, add_points=False, color='#FFDBBB', facecolor='#FFDBBB')
+        # plot_polygon(halves[0].convex_hull, add_points=False, color='#FFDBBB')
+        # plot_polygon(halves[1].convex_hull, add_points=False, color='#FFAD00')
+        #plot_polygon(halves_difference[0], add_points=False, color='#FFDBBB', facecolor='#FFDBBB')
+        #plot_polygon(halves_difference[1], add_points=False, color='#FFAD00', facecolor='#FFAD00')
 
         return {
                 'head': np.asarray(head_coord),
@@ -86,7 +138,7 @@ class FishHeadTailDetector:
                 'confidence': confidence,
                 'head_poly': head_poly,
                 'tail_poly': tail_poly,
-                'head_corrected': np.asarray([head_coord_corrected.x, head_coord_corrected.y])
+                'head_corrected': np.asarray([head_corrected.x, head_corrected.y])
                 }
 
 
