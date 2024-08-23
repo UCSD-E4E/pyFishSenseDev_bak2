@@ -5,6 +5,7 @@ import numpy as np
 import cv2
 import shapely
 from shapely import ops
+from typing import Tuple, List
 
 class FishGeometry:
     def __init__(self, mask: np.ndarray):
@@ -56,15 +57,15 @@ class FishGeometry:
     def set_tail_corrected(self, tail_corrected):
         self.__tail_corrected = np.asarray(tail_corrected)
 
-    def get_mask(self):
+    def get_mask(self) -> np.ndarray:
         return self.__mask
 
-    def get_estimated_endpoints(self):
+    def get_estimated_endpoints(self) -> Tuple[np.ndarray, np.ndarray]:
         """The first estimated endpoints. The client must set this."""
         assert self.__estimated_endpoints is not None, "You need to set the endpoints first! Use set_estimated_endpoints()."
         return self.__estimated_endpoints
     
-    def get_perimeter(self):
+    def get_perimeter(self) -> List[np.ndarray]:
         """List of points representing the perimeter of the mask."""
         if self.__perimeter is not None:
             return self.__perimeter
@@ -73,14 +74,14 @@ class FishGeometry:
         self.__perimeter = contours[0].reshape(-1, 2)
         return self.__perimeter
     
-    def get_ab(self):
+    def get_ab(self) -> shapely.geometry.linestring.LineString:
         """The line connecting the first estimated endpoints."""
         if self.__ab is not None:
             return self.__ab
         self.__ab = shapely.geometry.LineString(self.get_estimated_endpoints())
         return self.__ab
     
-    def get_ab_perp(self):
+    def get_ab_perp(self) -> shapely.geometry.linestring.LineString:
         """The line perpendicular to ab."""
         if self.__ab_perp is not None:
             return self.__ab_perp
@@ -94,14 +95,14 @@ class FishGeometry:
         self.__ab_perp = shapely.geometry.LineString([ab_left.centroid, ab_right.centroid])
         return self.__ab_perp
     
-    def get_polygon(self):
+    def get_polygon(self) -> shapely.geometry.polygon.Polygon:
         """A polygonal representation of the fish mask."""
         if self.__polygon is not None:
             return self.__polygon
         self.__polygon = shapely.geometry.Polygon(self.get_perimeter())
         return self.__polygon
     
-    def get_halves(self):
+    def get_halves(self) -> Tuple[shapely.geometry.polygon.Polygon, shapely.geometry.polygon.Polygon]:
         """Two polygon halves sliced by ab_perp."""
         if self.__halves is not None:
             return self.__halves
@@ -110,7 +111,7 @@ class FishGeometry:
             self.__halves = sorted(self.__halves, key=lambda p: p.area, reverse=True)[:2]
         return self.__halves
     
-    def get_halves_convex(self):
+    def get_halves_convex(self) -> Tuple[shapely.geometry.polygon.Polygon, shapely.geometry.polygon.Polygon]:
         """The respective convex hulls of the halves."""
         if self.__halves_convex is not None:
             return self.__halves_convex
@@ -118,7 +119,7 @@ class FishGeometry:
         self.__halves_convex = [halves[0].convex_hull, halves[1].convex_hull]
         return self.__halves_convex
     
-    def get_head_poly(self):
+    def get_head_poly(self) -> shapely.geometry.polygon.Polygon:
         """The polygon half containing head_coord. This or head_coord must be set by the client."""
         if self.__head_poly is not None:
             return self.__head_poly
@@ -128,7 +129,7 @@ class FishGeometry:
         self.set_tail_poly(tail)
         return self.__head_poly
     
-    def get_tail_poly(self):
+    def get_tail_poly(self) -> shapely.geometry.polygon.Polygon:
         """The polygon half containing tail_coord. This or tail_coord must be set by the client."""
         if self.__tail_poly is not None:
             return self.__tail_poly
@@ -138,7 +139,7 @@ class FishGeometry:
         self.set_tail_poly(tail)
         return self.__tail_poly
     
-    def get_head_coord(self, endpoints=None):
+    def get_head_coord(self, endpoints=None) -> np.ndarray:
         """The estimated endpoint coordinate contained in head_poly. This or head_poly must be set by the client."""
         if self.__head_coord is not None:
             return self.__head_coord
@@ -148,7 +149,7 @@ class FishGeometry:
         self.set_tail_coord(tail)
         return self.__head_coord
     
-    def get_tail_coord(self, endpoints=None):
+    def get_tail_coord(self, endpoints=None) -> np.ndarray:
         """The estimated endpoint coordinate contained in tail_poly. This or tail_poly must be set by the client."""
         if self.__tail_coord is not None:
             return self.__tail_coord
@@ -158,40 +159,40 @@ class FishGeometry:
         self.set_tail_coord(tail)
         return self.__tail_coord
     
-    def get_headpoint_extended(self):
+    def get_headpoint_extended(self) -> shapely.geometry.point.Point:
         """A point further out from head_coord on an extended ab."""
         if self.__headpoint_extended is not None:
             return self.__headpoint_extended
         self.__find_outer_points()
         return self.__headpoint_extended
     
-    def get_tailpoint_extended(self):
+    def get_tailpoint_extended(self) -> shapely.geometry.point.Point:
         """A point further out from tail_coord on an extended ab."""
         if self.__tailpoint_extended is not None:
             return self.__tailpoint_extended
         self.__find_outer_points()
         return self.__tailpoint_extended
     
-    def get_headpoint_line(self):
+    def get_headpoint_line(self) -> shapely.geometry.linestring.LineString:
         """The line parallel to ab_perp with its centroid being head_coord."""
         if self.__headpoint_line is not None:
             return self.__headpoint_line
         self.__find_endpoint_lines()
         return self.__headpoint_line
 
-    def get_tailpoint_line(self):
+    def get_tailpoint_line(self) -> shapely.geometry.linestring.LineString:
         """The line parallel to ab_perp with its centroid being tail_coord."""
         if self.__tailpoint_line is not None:
             return self.__tailpoint_line
         self.__find_endpoint_lines()
         return self.__tailpoint_line
     
-    def get_head_corrected(self):
+    def get_head_corrected(self) -> np.ndarray:
         """The end result. Must be set by the client."""
         assert self.__head_corrected is not None, "You need to set head_corrected. Try set_head_corrected()."
         return self.__head_corrected
     
-    def get_tail_corrected(self):
+    def get_tail_corrected(self) -> np.ndarray:
         """The end result. Must be set by the client."""
         assert self.__tail_corrected is not None, "You need to set tail_corrected. Try set_tail_corrected()."
         return self.__tail_corrected
