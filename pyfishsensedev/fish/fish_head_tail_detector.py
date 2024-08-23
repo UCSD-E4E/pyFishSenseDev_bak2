@@ -187,10 +187,14 @@ if __name__ == "__main__":
     mask = np.zeros_like(segmentations, dtype=bool)
     mask[segmentations == segmentations[coords[1], coords[0]]] = True
 
-    fish_head_tail_detector = FishHeadTailDetector()
-    left_coord, right_coord = fish_head_tail_detector.estimate_endpoints(mask, img8)
+    fish_head_tail_detector = FishHeadTailDetector(mask)
+    fish_head_tail_detector.estimate_endpoints()
+    fish_head_tail_detector.classify_endpoints()
+    corrections = fish_head_tail_detector.correct_endpoints()
+    head_coord = corrections['head_corrected']
+    tail_coord = corrections['tail_corrected']
 
     plt.imshow(img8)
-    plt.plot(left_coord[0], left_coord[1], "r.")
-    plt.plot(right_coord[0], right_coord[1], "b.")
+    plt.plot(head_coord[0], head_coord[1], "r.")
+    plt.plot(tail_coord[0], tail_coord[1], "b.")
     plt.show()
