@@ -4,7 +4,6 @@ from typing import Tuple, Dict
 import matplotlib.pyplot as plt
 from shapely.plotting import plot_polygon, plot_line, plot_points
 import numpy as np
-import cv2
 import shapely
 from shapely import ops
 
@@ -15,10 +14,10 @@ class FishHeadTailDetector:
         self.geo = FishGeometry(mask)
 
     def correct_tail_coord(self): # TODO
-        self.geo.set_tail_corrected(self.geo.get_tail_coord())
+        self.geo.set_tail_corrected(np.asarray(self.geo.get_tail_coord()))
 
         return {
-            'tail_corrected': np.asarray(self.geo.get_tail_corrected())
+            'tail': self.geo.get_tail_corrected()
             }
 
     def correct_head_coord(self):
@@ -38,7 +37,7 @@ class FishHeadTailDetector:
         self.geo.set_head_corrected([head_corrected.x, head_corrected.y])
 
         return {
-            'head_corrected': np.asarray(self.geo.get_head_corrected())
+            'head': self.geo.get_head_corrected()
             }
     
     def correct_endpoints(self):
@@ -47,13 +46,13 @@ class FishHeadTailDetector:
         self.correct_tail_coord()
 
         return {
-            'head_corrected': np.asarray(self.geo.get_head_corrected()),
-            'tail_corrected': np.asarray(self.geo.get_tail_corrected())
+            'head': self.geo.get_head_corrected(),
+            'tail': self.geo.get_tail_corrected()
             }
 
     def classify_endpoints(self, endpoints=None) -> Dict[str, np.ndarray]:
-        endpoints = self.geo.get_endpoints() if endpoints == None else endpoints
-        self.geo.set_endpoints(endpoints)
+        endpoints = self.geo.get_estimated_endpoints() if endpoints == None else endpoints
+        self.geo.set_estimated_endpoints(endpoints)
 
         # get halves
         halves = self.geo.get_halves()
@@ -79,8 +78,8 @@ class FishHeadTailDetector:
         confidence = int(confidence * 100) / 100
 
         return {
-                'head': np.asarray(head_coord),
-                'tail': np.asarray(tail_coord),
+                'head': head_coord,
+                'tail': tail_coord,
                 'confidence': confidence
                 }
 
@@ -148,8 +147,14 @@ class FishHeadTailDetector:
         left_coord[1] += y_min
         right_coord[1] += y_min
 
-        self.geo.set_endpoints([left_coord, right_coord])
-        return self.geo.pca_endpoints
+        self.geo.set_estimated_endpoints([left_coord, right_coord])
+        return self.geo.get_estimated_endpoints()
+    
+    def get_head_tail(self):
+        self.estimate_endpoints()
+        self.classify_endpoints()
+        corrected = self.correct_endpoints()
+        return corrected
 
 if __name__ == "__main__":
     import cv2
@@ -188,11 +193,18 @@ if __name__ == "__main__":
     mask[segmentations == segmentations[coords[1], coords[0]]] = True
 
     fish_head_tail_detector = FishHeadTailDetector(mask)
+
+    # run through the process
     fish_head_tail_detector.estimate_endpoints()
     fish_head_tail_detector.classify_endpoints()
     corrections = fish_head_tail_detector.correct_endpoints()
-    head_coord = corrections['head_corrected']
-    tail_coord = corrections['tail_corrected']
+    head_coord = corrections['head']
+    tail_coord = corrections['tail']
+
+    # or just use one function
+    # corrections = fish_head_tail_detector.get_head_tail()
+    # head_coord = corrections['head']
+    # tail_coord = corrections['tail']
 
     plt.imshow(img8)
     plt.plot(head_coord[0], head_coord[1], "r.")

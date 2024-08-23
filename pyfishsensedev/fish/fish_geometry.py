@@ -7,7 +7,7 @@ class FishGeometry:
     def __init__(self, mask: np.ndarray):
         self.mask = mask
         self.perimeter = None
-        self.pca_endpoints = None # the estimated endpoints from PCA (client sets this) TODO: rename
+        self.estimated_endpoints = None # the first estimated endpoints (client sets this)
         self.ab = None # the line connecting the endpoints 
         self.ab_perp = None # the line perpendicular to ab 
         self.polygon = None # a polygonal representation of the fish mask 
@@ -18,7 +18,7 @@ class FishGeometry:
         self.tail_poly = None # the polygon half containing tail_coord (client sets this)
         self.head_poly = None # the polygon half containing head_coord (client sets this)
         # ^^ The client only needs to classify either the coords or the polygons. They don't have to do both.
-        # The respective counterparts are calculated automatically.
+        # The respective counterparts are inferred automatically.
         self.headpoint_line = None # a line parallel to ab_perp with its centroid being head_coord
         self.tailpoint_line = None # a line parallel to ab_perp with its centroid being tail_coord
         self.nose_point = None # a point further out from the head_coord
@@ -26,8 +26,9 @@ class FishGeometry:
         self.head_corrected = None # the corrected head point (client sets this)
         self.tail_corrected = None # the corrected tail point (client sets this)
 
-    def set_endpoints(self, endpoints):
-        self.pca_endpoints = endpoints
+    def set_estimated_endpoints(self, endpoints):
+        left, right = endpoints
+        self.estimated_endpoints = [np.asarray(left), np.asarray(right)]
     
     def set_tail_poly(self, tail_poly):
         self.tail_poly = tail_poly
@@ -36,20 +37,20 @@ class FishGeometry:
         self.head_poly = head_poly
 
     def set_tail_coord(self, tail_coord):
-        self.tail_coord = tail_coord
+        self.tail_coord = np.asarray(tail_coord)
 
     def set_head_coord(self, head_coord):
-        self.head_coord = head_coord
+        self.head_coord = np.asarray(head_coord)
 
     def set_head_corrected(self, head_corrected):
-        self.head_corrected = head_corrected
+        self.head_corrected = np.asarray(head_corrected)
 
     def set_tail_corrected(self, tail_corrected):
-        self.tail_corrected = tail_corrected
+        self.tail_corrected = np.asarray(tail_corrected)
 
-    def get_endpoints(self):
-        assert self.pca_endpoints is not None, "You need to set the endpoints first! Use set_endpoints()."
-        return self.pca_endpoints
+    def get_estimated_endpoints(self):
+        assert self.estimated_endpoints is not None, "You need to set the endpoints first! Use set_estimated_endpoints()."
+        return self.estimated_endpoints
     
     def get_perimeter(self):
         if self.perimeter is not None:
@@ -61,7 +62,7 @@ class FishGeometry:
     def get_ab(self):
         if self.ab is not None:
             return self.ab
-        self.ab = shapely.geometry.LineString(self.get_endpoints())
+        self.ab = shapely.geometry.LineString(self.get_estimated_endpoints())
         return self.ab
     
     def get_ab_perp(self):
@@ -101,25 +102,37 @@ class FishGeometry:
     def get_head_poly(self):
         if self.head_poly is not None:
             return self.head_poly
-        self.head_poly, _ = self.__find_polys_from_matching_endpoints()
+        # if the head poly is not already set, try to infer it from the coord information
+        head, tail = self.__find_polys_from_matching_endpoints()
+        self.set_head_poly(head)
+        self.set_tail_poly(tail)
         return self.head_poly
     
     def get_tail_poly(self):
         if self.tail_poly is not None:
             return self.tail_poly
-        _, self.tail_poly = self.__find_polys_from_matching_endpoints()
+        # if the tail poly is not already set, try to infer it from the coord information
+        head, tail = self.__find_polys_from_matching_endpoints()
+        self.set_head_poly(head)
+        self.set_tail_poly(tail)
         return self.tail_poly
     
     def get_head_coord(self, endpoints=None):
         if self.head_coord is not None:
             return self.head_coord
-        self.head_coord, _ = self.__find_endpoints_from_matching_polys(endpoints)
+        # if the head coord is not already set, try to infer it from the polygon information
+        head, tail = self.__find_endpoints_from_matching_polys(endpoints)
+        self.set_head_coord(head)
+        self.set_tail_coord(tail)
         return self.head_coord
     
     def get_tail_coord(self, endpoints=None):
         if self.tail_coord is not None:
             return self.tail_coord
-        _, self.tail_coord = self.__find_endpoints_from_matching_polys(endpoints)
+        # if the tail coord is not already set, try to infer it from the polygon information
+        head, tail = self.__find_endpoints_from_matching_polys(endpoints)
+        self.set_head_coord(head)
+        self.set_tail_coord(tail)
         return self.tail_coord
     
     def get_nose_point(self):
@@ -192,7 +205,7 @@ class FishGeometry:
     
     def __find_endpoints_from_matching_polys(self, endpoints=None):
         assert self.head_poly is not None and self.tail_poly is not None, "You need to classify the polygons. Try set_head_poly() or set_tail_poly()."
-        left_coord, right_coord = self.pca_endpoints if endpoints == None else endpoints
+        left_coord, right_coord = self.estimated_endpoints if endpoints == None else endpoints
         if (abs(shapely.distance(shapely.Point(left_coord), self.get_head_poly())) <
             abs(shapely.distance(shapely.Point(left_coord), self.get_tail_poly()))):
             head_coord = left_coord
