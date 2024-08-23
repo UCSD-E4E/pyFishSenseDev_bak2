@@ -10,6 +10,16 @@ from shapely import ops
 from pyfishsensedev.fish.fish_geometry import FishGeometry
 
 class FishHeadTailDetector:
+    """ Fish mask endpoint detector and classifier.
+    
+        1. Estimates endpoints.
+        2. Classifies endpoints as either head/tail. Uses endpoints from:
+            - previous step OR
+            - specified parameter
+        3. Uses separate heuristic to correct each.
+
+        Included is a function that does all these steps in one.
+    """
     def __init__(self, mask: np.ndarray):
         self.geo = FishGeometry(mask)
 
@@ -24,13 +34,13 @@ class FishHeadTailDetector:
         # any point on head_poly_sliced is better or just as good as the initial estimated point
         head_poly_sliced = ops.split(self.geo.get_head_poly(), self.geo.get_headpoint_line()).geoms
 
-        # polygon closest to nosepoint is the one we want
-        distances = [shapely.distance(p, self.geo.get_nose_point()) for p in head_poly_sliced]
+        # polygon closest to the extended headpoint is the one we want
+        distances = [shapely.distance(p, self.geo.get_headpoint_extended()) for p in head_poly_sliced]
         head_poly_sliced = head_poly_sliced[distances.index(min(distances))]
 
         # we guess the tip of head_poly_sliced by finding its nearest point to another point far ahead
         try:
-            _, head_corrected = ops.nearest_points(self.geo.get_nose_point(), head_poly_sliced.convex_hull.boundary)
+            _, head_corrected = ops.nearest_points(self.geo.get_headpoint_extended(), head_poly_sliced.convex_hull.boundary)
         except:
             # if a point can't be extracted, we default to the original estimation
             head_corrected = shapely.geometry.Point(self.geo.get_head_coord())
@@ -84,12 +94,14 @@ class FishHeadTailDetector:
                 }
 
     def estimate_endpoints(self) -> Tuple[np.ndarray, np.ndarray, float]:
+        mask = self.geo.get_mask()
+
         # Find all the nonzero points.  These are the mask.
-        y, x = self.geo.mask.nonzero()
+        y, x = mask.nonzero()
         x_min, x_max, y_min, y_max = [x.min(), x.max(), y.min(), y.max()]
 
         # Crop the mask using the nonzero
-        mask_crop = self.geo.mask[y_min:y_max, x_min:x_max]
+        mask_crop = mask[y_min:y_max, x_min:x_max]
         y, x = mask_crop.nonzero()
 
         # Necessary for using PCA
@@ -139,7 +151,7 @@ class FishHeadTailDetector:
         left_coord = coords[:, np.argmin(x)]
         right_coord = coords[:, np.argmax(x)]
 
-        y, x = self.geo.mask.nonzero()
+        y, x = mask.nonzero()
         x_min, x_max, y_min, y_max = [x.min(), x.max(), y.min(), y.max()]
 
         left_coord[0] += x_min
@@ -195,8 +207,8 @@ if __name__ == "__main__":
     fish_head_tail_detector = FishHeadTailDetector(mask)
 
     # run through the process
-    fish_head_tail_detector.estimate_endpoints()
-    fish_head_tail_detector.classify_endpoints()
+    estimations = fish_head_tail_detector.estimate_endpoints()
+    fish_head_tail_detector.classify_endpoints(estimations)
     corrections = fish_head_tail_detector.correct_endpoints()
     head_coord = corrections['head']
     tail_coord = corrections['tail']
