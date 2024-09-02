@@ -247,7 +247,7 @@ class FishGeometry:
     
     def __find_polys_from_matching_endpoints(self):
         assert self.__head_coord is not None and self.__tail_coord is not None, "You need to classify the endpoints. Try set_head_coord() or set_tail_coord()."
-        halves = set.get_halves()
+        halves = self.get_halves()
         if (abs(shapely.distance(shapely.Point(self.__head_coord), halves[0])) <
             abs(shapely.distance(shapely.Point(self.__head_coord), halves[1]))):
             head_poly = halves[0]
