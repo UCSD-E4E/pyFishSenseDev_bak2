@@ -24,7 +24,32 @@ class FishHeadTailDetector:
         self.geo = FishGeometry(mask)
 
     def correct_tail_coord(self): # TODO
-        self.geo.set_tail_corrected(np.asarray(self.geo.get_tail_coord()))
+        tail_poly = self.geo.get_tail_poly()
+
+        tail_convex = tail_poly.convex_hull
+
+        tail_convex_diff = shapely.difference(tail_convex, tail_poly).geoms
+
+        distances = [shapely.distance(p, self.geo.get_tailpoint_extended()) for p in tail_convex_diff]
+        
+        tail_convex_diff = tail_convex_diff[distances.index(min(distances))]
+
+        tail_point = shapely.geometry.Point(self.geo.get_tail_coord())
+        tailpoint_in_poly = (tail_convex_diff.boundary.contains(tail_point)
+                             or tail_point.within(tail_convex_diff))
+        print("Tail in poly? " + str(tailpoint_in_poly))
+
+        if tailpoint_in_poly:
+            _, tail_corrected = ops.nearest_points(self.geo.get_headpoint_extended(), tail_convex_diff.boundary)
+        else:
+            # we assume that the tail is non-convex
+            # TODO: slice tail_poly with a line a little before tailpoint_line, trim the extra, and get the centroid
+            tail_corrected = shapely.geometry.Point(self.geo.get_tail_coord())
+
+        # plot_polygon(tail_convex_diff, add_points=False)
+        #plot_points(tail_corrected)
+
+        self.geo.set_tail_corrected(np.asarray([tail_corrected.x, tail_corrected.y]))
 
         return {
             'tail': self.geo.get_tail_corrected()
